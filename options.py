@@ -55,10 +55,24 @@ def get_options(args=None):
     parser.add_argument(
         "--dataset_size", type=int, default=1000, help="Dataset size for training",
     )
-
-
-
-
+    
+    parser.add_argument(
+        "--num_cars", type=int, default=100, help="Number of cars in the simulation for training",
+    )
+    
+    parser.add_argument(
+        "--epsilon", type=float, default=0.6, help="Epsilon parameter for charging coordinator",
+    )
+    parser.add_argument(
+        "--lambda", type=int, default=20, help="Poisson rate for number of arriving cars",
+    )
+    parser.add_argument(
+        "--total_power", type=float, default=1500, help="Total power capacity of charging station at each timestep",
+    )
+    parser.add_argument(
+        "--battery_capacity", type=float, default=200, help="Battery capacity of vehicle",
+    )
+    
     parser.add_argument(
         "--hidden_dim",
         type=int,
