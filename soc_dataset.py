@@ -1,3 +1,5 @@
+from torch.utils.data import Dataset
+
 class SoCDataset(Dataset):
   def __init__(self, soc, labels):
     self.soc = soc
