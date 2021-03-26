@@ -14,14 +14,20 @@ from DNNAgent import mal_agent
 from charging_env import charging_ev
 import os
 from itertools import product
+import json
 
 def train(opts):
 
   torch.random.manual_seed(opts.seed)
+  if not opts.eval_only and not os.path.exists(opts.save_dir):
+        os.makedirs(opts.save_dir)
+    # Save arguments so exact configuration can always be found
+        with open(os.path.join(opts.save_dir, "args.json"), "w") as f:
+          json.dump(vars(opts), f, indent=True)
   train_dataset = torch.load(opts.train_dataset)
   train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
-  # val_dataset = torch.load(opts.val_dataset)
-  # val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
+  val_dataset = torch.load(opts.train_dataset)
+  val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
   
 
   # env = charging_ev(num_cars, num_timesteps, total_power, epsilon, battery_capacity, opts.device, batch_size)
@@ -51,8 +57,8 @@ def train(opts):
       opts.lr_decay = params[1]
 
       agent = train_epoch(train_dataset, val_dataset, opts)
-      dataloader = DataLoader(val_dataset, opts.batch_size, True)
-      avg_r = eval(agent, dataloader, opts)
+      val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+      avg_r = eval(agent, val_loader, opts)
       if avg_r > max_val:
         best_params = params
         max_val = avg_r
@@ -60,8 +66,8 @@ def train(opts):
       with open(SCOREFILE, "a") as f:
         f.write(f'{",".join(map(str, params + (avg_r)))}\n')
 
-      with open(SCOREFILE, "a") as f:
-        f.write(f'{"Best params" + ",".join(map(str, params + (avg_r)))}\n')
+    with open(SCOREFILE, "a") as f:
+      f.write(f'{"Best params: " + ",".join(map(str, best_params + (avg_r)))}\n')
 
 
 
@@ -139,10 +145,10 @@ def eval(agent, dataloader, opts):
   average_reward = []
   for i, (x, y) in enumerate(dataloader):
     x = x.to(opts.device)
-    r = run_env(agent, opts)
+    r, log = run_env(agent, x, opts)
     average_reward.append(-r.mean().item())
 
-  return np.array(average_reward).sum()
+  return np.array(average_reward).mean()
 
 
 
