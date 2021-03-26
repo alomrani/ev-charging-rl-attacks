@@ -16,10 +16,9 @@ from charging_env import charging_ev
 def train(opts):
 
   torch.random.manual_seed(opts.seed)
-  batch_size = 536
   dataset = torch.load("drive/MyDrive/PEVdata/dataset.pt")
   dataset = dataset.reshape(dataset.size(0) * dataset.size(1), -1)
-  train_loader = DataLoader(SoCDataset(dataset[:, :-1], dataset[:, -1][:, None]), batch_size=batch_size, shuffle=True)
+  train_loader = DataLoader(SoCDataset(dataset[:, :-1], dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
 
   # env = charging_ev(num_cars, num_timesteps, total_power, epsilon, battery_capacity, opts.device, batch_size)
   baseline = ExponentialBaseline(opts.beta)
@@ -32,7 +31,7 @@ def train(opts):
   average_reward = []
   loss_log = []
   for epoch in range(opts.num_epochs):
-    r = train_batch(agent, train_loader, batch_size, optimizer, baseline, loss_log, average_reward, opts)
+    r = train_batch(agent, train_loader, opts.batch_size, optimizer, baseline, loss_log, average_reward, opts)
     lr_scheduler.step()
     print(f"Epoch {epoch}: Average Reward {-r.mean()}")
 
