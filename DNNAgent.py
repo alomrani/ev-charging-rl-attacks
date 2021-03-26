@@ -1,5 +1,7 @@
 import torch.nn as nn
 import math
+import torch
+import numpy as np
 
 class mal_agent(nn.Module):
   def __init__(self, hidden_size, input_size):
@@ -15,11 +17,7 @@ class mal_agent(nn.Module):
         nn.ReLU(),
         nn.Linear(hidden_size, 2),
     )
-    self.init_parameters()
-  def init_parameters(self):
-    for name, param in self.named_parameters():
-      stdv = 1. / math.sqrt(param.size(-1))
-      param.data.uniform_(-stdv, stdv)
+
   def forward(self, requests):
     return self.net(requests)
   

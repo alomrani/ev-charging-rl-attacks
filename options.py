@@ -25,13 +25,6 @@ def get_options(args=None):
         help="Number of instances per batch during training",
     )
 
-    )
-    #    parser.add_argument(
-    #        "--epoch_size",
-    #        type=int,
-    #        default=100,
-    #        help="Number of instances per epoch during training",
-    #    )
     parser.add_argument(
         "--val_size",
         type=int,
@@ -125,12 +118,6 @@ def get_options(args=None):
         help="Set this value to only evaluate model on a specific graph size",
     )
 
-
-    #    parser.add_argument(
-    #        "--eval_family",
-    #        action="store_true",
-    #        help="Set this to true if you evaluating the model over a family of graphs",
-    #    )
     parser.add_argument(
         "--eval_output", type=str, default=".", help="path to output evaulation plots",
     )
@@ -162,7 +149,7 @@ def get_options(args=None):
     opts = parser.parse_args(args)
     opts.use_cuda = torch.cuda.is_available() and not opts.no_cuda
     opts.run_name = "{}_{}".format(opts.run_name, time.strftime("%Y%m%dT%H%M%S"))
-    opts.save_dir = os.path.join(opts.output_dir, opts.model, opts.run_name)
+    opts.save_dir = os.path.join(opts.output_dir, opts.run_name)
 
     assert (
         opts.dataset_size % opts.batch_size == 0

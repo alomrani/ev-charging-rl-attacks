@@ -3,22 +3,24 @@ import numpy as np
 
 
 class charging_ev():
-  def __init__(self, num_cars, time, total_power, epsilon, battery_capacity, device, batch_size):
-    self.num_cars = num_cars
-    self.time = time
-    self.cur = torch.ones(batch_size, device=device) * total_power
-    self.allocated_power = torch.zeros(batch_size, num_cars, device=device)
-    self.history = torch.zeros(batch_size, num_cars, device=device)
-    self.battery_capacity = battery_capacity
-    self.total_power = total_power
+  def __init__(self, opts):
+    self.num_cars = opts.num_cars
+    self.time = opts.time
+    self.cur = torch.ones(opts.batch_size, device=opts.device) * opts.total_power
+    self.allocated_power = torch.zeros(opts.batch_size, opts.num_cars, device=opts.device)
+    self.history = torch.zeros(opts.batch_size, opts.num_cars, device=opts.device)
+    self.battery_capacity = opts.battery_capacity
+    self.total_power = opts.total_power
     self.timestep = 0
+    self.opts = opts
 
   def finished(self):
     return self.timestep == self.time
 
   def step(self, requests):
-    self.cur = torch.ones(batch_size, device=device) * total_power
-    pi = (1. - requests) * epsilon + (1. - epsilon) * 0.2
+
+    self.cur = torch.ones(self.batch_size, device=self.opts.device) * self.total_power
+    pi = (1. - requests) * self.epsilon + (1. - self.epsilon) * 0.2
 
     p = (1. - requests) * self.battery_capacity
 
