@@ -52,9 +52,9 @@ def train(opts):
     for param_ix in range(this_worker, len(PARAM_GRID), N_WORKERS):
       torch.manual_seed(opts.seed)
       params = PARAM_GRID[param_ix]
-      opts.exp_beta = params[2]
+      opts.exp_beta = params[1]
       opts.lr_model = params[0]
-      opts.lr_decay = params[1]
+      opts.lr_decay = params[2]
 
       agent = train_epoch(train_dataset, val_dataset, opts)
       val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
@@ -64,10 +64,10 @@ def train(opts):
         max_val = avg_r
 
       with open(SCOREFILE, "a") as f:
-        f.write(f'{",".join(map(str, params + (avg_r)))}\n')
+        f.write(f'{",".join(map(str, params + (avg_r,)))}\n')
 
     with open(SCOREFILE, "a") as f:
-      f.write(f'{"Best params: " + ",".join(map(str, best_params + (avg_r)))}\n')
+      f.write(f'{"Best params: " + ",".join(map(str, best_params + (avg_r,)))}\n')
 
 
 
