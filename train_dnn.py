@@ -59,5 +59,6 @@ def train_dnn(opts):
   plt.figure(2)
   line2, = plt.plot(np.arange(opts.num_epochs), val_ac)
 
-def main():
-  train_dnn(get_options())
+
+if __name__ == "__main__":
+    train_dnn(get_options())

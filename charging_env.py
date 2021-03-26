@@ -5,7 +5,7 @@ import numpy as np
 class charging_ev():
   def __init__(self, opts):
     self.num_cars = opts.num_cars
-    self.time = opts.time
+    self.time = opts.num_timesteps
     self.cur = torch.ones(opts.batch_size, device=opts.device) * opts.total_power
     self.allocated_power = torch.zeros(opts.batch_size, opts.num_cars, device=opts.device)
     self.history = torch.zeros(opts.batch_size, opts.num_cars, device=opts.device)
@@ -13,13 +13,15 @@ class charging_ev():
     self.total_power = opts.total_power
     self.timestep = 0
     self.opts = opts
-
+    self.batch_size = opts.batch_size
+    self.device = opts.device
+    self.epsilon = opts.epsilon
   def finished(self):
     return self.timestep == self.time
 
   def step(self, requests):
 
-    self.cur = torch.ones(self.batch_size, device=self.opts.device) * self.total_power
+    self.cur = torch.ones(self.batch_size, device=self.device) * self.total_power
     pi = (1. - requests) * self.epsilon + (1. - self.epsilon) * 0.2
 
     p = (1. - requests) * self.battery_capacity

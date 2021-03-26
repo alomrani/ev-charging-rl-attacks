@@ -21,14 +21,14 @@ def get_options(args=None):
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=10,
+        default=536,
         help="Number of instances per batch during training",
     )
 
     parser.add_argument(
         "--val_size",
-        type=int,
-        default=1000,
+        type=float,
+        default=4000.,
         help="Number of instances used for reporting validation performance",
     )
     parser.add_argument(
@@ -41,12 +41,12 @@ def get_options(args=None):
     parser.add_argument(
         "--train_dataset",
         type=str,
-        default="dataset/train",
+        default="dataset.pt",
         help="Dataset file to use for training",
     )
 
     parser.add_argument(
-        "--dataset_size", type=int, default=1000, help="Dataset size for training",
+        "--dataset_size", type=int, default=12864, help="Dataset size for training",
     )
     
     parser.add_argument(
@@ -57,7 +57,7 @@ def get_options(args=None):
         "--epsilon", type=float, default=0.6, help="Epsilon parameter for charging coordinator",
     )
     parser.add_argument(
-        "--lambda", type=int, default=20, help="Poisson rate for number of arriving cars",
+        "--lamb", type=int, default=20, help="Poisson rate for number of arriving cars",
     )
     parser.add_argument(
         "--total_power", type=float, default=1500, help="Total power capacity of charging station at each timestep",
@@ -67,19 +67,29 @@ def get_options(args=None):
     )
     
     parser.add_argument(
-        "--hidden_dim",
+        "--hidden_size",
         type=int,
-        default=16,
+        default=264,
         help="Dimension of hidden layers in Enc/Dec",
     )
-
-
+    parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=10,
+        help="Number of training epochs",
+    )
+    parser.add_argument(
+        "--num_timesteps",
+        type=int,
+        default=48,
+        help="Number of timesteps in charging simulation",
+    )
 
     # Training
     parser.add_argument(
         "--lr_model",
         type=float,
-        default=1e-3,
+        default=1e-2,
         help="Set the learning rate for the actor network",
     )
     parser.add_argument(
@@ -90,12 +100,6 @@ def get_options(args=None):
         "--n_epochs", type=int, default=1000, help="The number of epochs to train"
     )
     parser.add_argument("--seed", type=int, default=1234, help="Random seed to use")
-    parser.add_argument(
-        "--max_grad_norm",
-        type=float,
-        default=1.0,
-        help="Maximum L2 norm for gradient clipping, default 1.0 (0 to disable clipping)",
-    )
     parser.add_argument("--no_cuda", action="store_true", help="Disable CUDA")
     parser.add_argument(
         "--exp_beta",
@@ -148,7 +152,11 @@ def get_options(args=None):
 
     opts = parser.parse_args(args)
     opts.use_cuda = torch.cuda.is_available() and not opts.no_cuda
-    opts.run_name = "{}_{}".format(opts.run_name, time.strftime("%Y%m%dT%H%M%S"))
+    if opts.use_cuda:
+        opts.device = "cuda"
+    else:
+        opts.device = "cpu"
+    opts.run_name = "{}_{}".format("run", time.strftime("%Y%m%dT%H%M%S"))
     opts.save_dir = os.path.join(opts.output_dir, opts.run_name)
 
     assert (
