@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from tqdm.auto import tqdm
+from tqdm import tqdm
 # from imblearn.over_sampling import ADASYN
 from torch.utils.data import Dataset, DataLoader
 from torch.optim import Adam
@@ -26,7 +26,7 @@ def train(opts):
           json.dump(vars(opts), f, indent=True)
   train_dataset = torch.load(opts.train_dataset)
   train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
-  val_dataset = torch.load(opts.train_dataset)
+  val_dataset = torch.load(opts.val_dataset)
   val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
   
 
@@ -94,26 +94,28 @@ def run_env(agent, batch, opts):
 
 def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_reward, opts):
 
-  for i, (x, y) in enumerate(train_loader):
-    x = x.to(opts.device)
+  rewards = []
+  for i, (x, y) in enumerate(tqdm(train_loader)):
+    x = x.to(torch.device(opts.device))
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
     r, log = run_env(agent, x, opts)
+    rewards.append(r.mean())
     optimizer.zero_grad()
     loss = ((r.unsqueeze(1) - baseline.eval(r)) * log).mean()
     loss_log.append(loss.item())
     average_reward.append(-r.mean().item())
     loss.backward()
     optimizer.step()
-  return r
+  return np.array(rewards).mean()
 
 
 def train_epoch(train_dataset, val_dataset, opts):
 
-  train_loader = DataLoader(SoCDataset(train_dataset[:, :-1], train_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+  train_loader = DataLoader(SoCDataset(train_dataset[:, :-1], train_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True, num_workers=1)
   val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
   baseline = ExponentialBaseline(opts.exp_beta)
-  agent = mal_agent(opts.hidden_size, opts.num_cars).to(opts.device)
-  optimizer = Adam(agent.parameters(), lr=0.001)
+  agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
+  optimizer = Adam(agent.parameters(), lr=opts.lr_model)
   lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
     optimizer, lambda epoch: opts.lr_decay ** epoch
   )
