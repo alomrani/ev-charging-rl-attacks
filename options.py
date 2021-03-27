@@ -28,29 +28,29 @@ def get_options(args=None):
     parser.add_argument(
         "--val_size",
         type=float,
-        default=4000.,
+        default=1072.,
         help="Number of instances used for reporting validation performance",
     )
     parser.add_argument(
         "--val_dataset",
         type=str,
-        default="dataset/val",
+        default="rl_val.pt",
         help="Dataset file to use for validation",
     )
 
     parser.add_argument(
         "--train_dataset",
         type=str,
-        default="dataset.pt",
+        default="rl_train.pt",
         help="Dataset file to use for training",
     )
 
     parser.add_argument(
-        "--dataset_size", type=int, default=12864, help="Dataset size for training",
+        "--dataset_size", type=int, default=11792, help="Dataset size for training",
     )
     
     parser.add_argument(
-        "--num_cars", type=int, default=100, help="Number of cars in the simulation for training",
+        "--num_cars", type=int, default=30, help="Number of cars in the simulation for training",
     )
     
     parser.add_argument(
