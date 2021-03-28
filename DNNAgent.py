@@ -26,6 +26,6 @@ class mal_agent(nn.Module):
     mu, sigma = out[:, 0].float(), torch.exp(out[:, 1]) + 1e-5
     n = torch.distributions.Normal(mu.detach(), sigma.detach())
     a = n.rsample().detach()
-    p = torch.exp(-0.5 * (((a - mu) / (sigma))**2)) * (1 / (sigma * np.sqrt(2 * np.pi)))
+    p = torch.exp(-0.5 * (((a - mu) / (sigma))**2)) * (1. / (sigma * np.sqrt(2. * np.pi)))
     log_p = torch.log(p + 1e-5)
     return a, log_p
