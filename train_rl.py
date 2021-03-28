@@ -25,9 +25,9 @@ def train(opts):
         with open(os.path.join(opts.save_dir, "args.json"), "w") as f:
           json.dump(vars(opts), f, indent=True)
   train_dataset = torch.load(opts.train_dataset)
-  train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
+#  train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
   val_dataset = torch.load(opts.val_dataset)
-  val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
+#  val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
   
 
   # env = charging_ev(num_cars, num_timesteps, total_power, epsilon, battery_capacity, opts.device, batch_size)
@@ -99,7 +99,7 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
     x = x.to(torch.device(opts.device))
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
     r, log = run_env(agent, x, opts)
-    rewards.append(r.mean())
+    rewards.append(r.mean().item())
     optimizer.zero_grad()
     loss = ((r.unsqueeze(1) - baseline.eval(r)) * log).mean()
     loss_log.append(loss.item())
@@ -112,7 +112,7 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
 def train_epoch(train_dataset, val_dataset, opts):
 
   train_loader = DataLoader(SoCDataset(train_dataset[:, :-1], train_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True, num_workers=1)
-  val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+  val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True, num_workers=1)
   baseline = ExponentialBaseline(opts.exp_beta)
   agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
   optimizer = Adam(agent.parameters(), lr=opts.lr_model)
@@ -124,9 +124,11 @@ def train_epoch(train_dataset, val_dataset, opts):
   agent.train()
   for epoch in range(opts.num_epochs):
     r = train_batch(agent, train_loader, optimizer, baseline, loss_log, average_reward, opts)
+
     lr_scheduler.step()
     if not opts.tune:
-      print(f"Epoch {epoch}: Average Reward {-r.mean()}")
+      r_val = eval(agent, val_loader, opts)
+      print(f"Epoch {epoch}: Average Reward {-r_val.mean()}")
   if not opts.tune:
     plt.figure(1)
     line1, = plt.plot(np.arange(len(average_reward)), average_reward)
