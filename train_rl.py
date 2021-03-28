@@ -80,7 +80,6 @@ def run_env(agent, batch, opts):
     num_charging[num_charging > opts.num_cars - 1] = opts.num_cars - 1
     requests = torch.rand(opts.batch_size, opts.num_cars - 1, device=opts.device)
     requests = (torch.arange(requests.size(1), device=opts.device) >= num_charging.unsqueeze(1)).float() + requests
-
     requests = torch.cat((batch[:, env.timestep].unsqueeze(1), requests), dim=-1)
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
@@ -100,8 +99,10 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
     r, log = run_env(agent, x, opts)
     rewards.append(r.mean().item())
+
     optimizer.zero_grad()
     loss = ((r.unsqueeze(1) - baseline.eval(r)) * log).mean()
+
     loss_log.append(loss.item())
     average_reward.append(-r.mean().item())
     loss.backward()
@@ -140,6 +141,7 @@ def train_epoch(train_dataset, val_dataset, opts):
     plt.xlabel("Batch")
     plt.ylabel("Policy Loss")
     plt.savefig(opts.save_dir + "/train_loss.png")
+    torch.save(agent.state_dict(), opts.save_dir + "trained_agent.pt")
   return agent
 
 
