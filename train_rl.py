@@ -139,7 +139,7 @@ def train_epoch(train_dataset, val_dataset, opts):
     plt.xlabel("Batch")
     plt.ylabel("Policy Loss")
     plt.savefig(opts.save_dir + "/train_loss.png")
-    torch.save(agent.state_dict(), opts.save_dir + "trained_agent.pt")
+    torch.save(agent.state_dict(), opts.save_dir + "/trained_agent.pt")
   return agent
 
 
