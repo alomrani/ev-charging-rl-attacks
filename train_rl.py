@@ -15,6 +15,7 @@ from charging_env import charging_ev
 import os
 from itertools import product
 import json
+import seaborn
 
 def train(opts):
 
@@ -31,8 +32,31 @@ def train(opts):
   
 
   # env = charging_ev(num_cars, num_timesteps, total_power, epsilon, battery_capacity, opts.device, batch_size)
-  if not opts.tune:
+  if not opts.tune and not opts.train_seed:
     train_epoch(train_dataset, train_dataset, opts)
+  elif opts.train_seed:
+    seeds = [1234, 4321, 1098, 7890]
+    agents = []
+    rewards = []
+    for i in range(len(seeds)):
+      torch.random.manual_seed(seeds[i])
+      agent, avg_reward = train_epoch(train_dataset, train_dataset, opts)
+      agents.append(agent)
+      rewards.append(avg_reward)
+    
+    rewards = np.array(rewards)
+    plt.figure(3)
+    # plt.title(f"Num Cars {opts.num_cars} arrival rate : {opts.lamb}")
+    # plt.xlabel("Batch")
+    # plt.ylabel("Average Episode Reward")
+    seaborn.set(style="darkgrid", font_scale=1)
+    seaborn.tsplot(data=rewards)
+    plt.savefig(opts.save_dir + "/avg_rewards_seed.png")
+
+
+    
+    
+
   else:
     PARAM_GRID = list(product(
             [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.00002, 0.04, 0.004, 0.0004, 0.00004],  # learning_rate
@@ -56,7 +80,7 @@ def train(opts):
       opts.lr_model = params[0]
       opts.lr_decay = params[2]
 
-      agent = train_epoch(train_dataset, val_dataset, opts)
+      agent, _ = train_epoch(train_dataset, val_dataset, opts)
       val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
       avg_r = eval(agent, val_loader, opts)
       if avg_r > max_val:
@@ -136,13 +160,13 @@ def train_epoch(train_dataset, val_dataset, opts):
     plt.xlabel("Batch")
     plt.ylabel("Average Reward")
     plt.savefig(opts.save_dir + "/avg_reward.png")
-    plt.figure(1)
+    plt.figure(2)
     line2, = plt.plot(np.arange(len(loss_log)), loss_log)
     plt.xlabel("Batch")
     plt.ylabel("Policy Loss")
     plt.savefig(opts.save_dir + "/train_loss.png")
-    torch.save(agent.state_dict(), opts.save_dir + "trained_agent.pt")
-  return agent
+    torch.save(agent.state_dict(), opts.save_dir + "/trained_agent.pt")
+  return agent, average_reward
 
 
 
