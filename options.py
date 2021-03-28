@@ -121,6 +121,11 @@ def get_options(args=None):
         action="store_true",
         help="Set this value to only evaluate model on a specific graph size",
     )
+    parser.add_argument(
+        "--train_seed",
+        action="store_true",
+        help="train agent on different seeds and plot avg rewards",
+    )
 
     parser.add_argument(
         "--eval_output", type=str, default=".", help="path to output evaulation plots",
