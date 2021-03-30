@@ -20,7 +20,7 @@ import seaborn
 def train(opts):
 
   torch.random.manual_seed(opts.seed)
-  if not opts.eval_only and not os.path.exists(opts.save_dir):
+  if not os.path.exists(opts.save_dir):
         os.makedirs(opts.save_dir)
     # Save arguments so exact configuration can always be found
         with open(os.path.join(opts.save_dir, "args.json"), "w") as f:
@@ -91,7 +91,15 @@ def train(opts):
     agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
     load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
     agent.load_state_dict(load_data)
-    r = eval(agent, val_loader, opts)
+    r, purtubed = eval(agent, val_loader, opts)
+    plt.figure(4)
+    ax1, = plt.plot(np.arange(opts.num_timesteps), np.array(purtubed[0, :]))
+    ax2, = plt.plot(np.arange(opts.num_timesteps), np.array(purtubed[1, :]))
+    plt.xlabel("Timestep")
+    plt.ylabel("SoC value")
+    plt.title(f"Benign vs Malicious reported SoC Sequence gamma={opts.gamma}")
+    plt.legend([ax1, ax2], ["benign", "malicious"])
+    plt.savefig(opts.save_dir + "/spoof_vs_normal.png")
     print(f"Mean reward: {r}")
 
   else:
@@ -105,6 +113,7 @@ def run_env(agent, batch, opts):
   env = charging_ev(opts)
   log = torch.zeros(opts.batch_size, 1, device=opts.device)
   total_purturbation = torch.zeros(opts.batch_size, 1, device=opts.device)
+  random_sequence = []
   while not env.finished():
     num_charging = torch.poisson(torch.ones(opts.batch_size, device=opts.device) * opts.lamb)
     num_charging[num_charging > opts.num_cars - 1] = opts.num_cars - 1
@@ -118,8 +127,11 @@ def run_env(agent, batch, opts):
     requests[:, 0] += a
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
+    random_sequence.append(requests[0, 0])
     r = -env.step(requests)[:, 0] / float(env.time)
     log += log_p.unsqueeze(1)
+  if opts.eval_only:
+    return r, log, total_purturbation, np.array(random_sequence)
   return r, log, total_purturbation
 
 def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_reward, opts):
@@ -129,8 +141,7 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
     x = x.to(torch.device(opts.device))
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
     r, log, total_purturbs = run_env(agent, x, opts)
-    if opts.regularize:
-      r = r + total_purturbs * opts.gamma * opts.battery_capacity
+    r = r + total_purturbs * opts.gamma * opts.battery_capacity
     rewards.append(r.mean())
     optimizer.zero_grad()
     loss = ((r.unsqueeze(1) - baseline.eval(r)) * log).mean()
@@ -181,10 +192,14 @@ def eval(agent, dataloader, opts):
   average_reward = []
   for i, (x, y) in enumerate(dataloader):
     x = x.to(opts.device)
-    r, log, _ = run_env(agent, x, opts)
+    if opts.eval_only:
+      r, log, _, purturbed_sequence = run_env(agent, x, opts)
+    else:
+      r, log, _ = run_env(agent, x, opts)
+
     average_reward.append(-r.mean().item())
 
-  return np.array(average_reward).mean()
+  return np.array(average_reward).mean(), torch.cat((x[0, :].unsqueeze(0), torch.tensor(purturbed_sequence).unsqueeze(0)), dim=0)
 
 
 
