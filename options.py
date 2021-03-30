@@ -89,7 +89,7 @@ def get_options(args=None):
     parser.add_argument(
         "--lr_model",
         type=float,
-        default=1e-2,
+        default=0.0004,
         help="Set the learning rate for the actor network",
     )
     parser.add_argument(
@@ -104,7 +104,7 @@ def get_options(args=None):
     parser.add_argument(
         "--exp_beta",
         type=float,
-        default=0.8,
+        default=0.7,
         help="Exponential moving average baseline decay (default 0.8)",
     )
     parser.add_argument(
@@ -112,10 +112,17 @@ def get_options(args=None):
         default=None,
         help="Baseline to use: 'rollout', 'critic' or 'exponential'. Defaults to no baseline.",
     )
- 
-
-
-  
+    parser.add_argument(
+        "--gamma",
+        type=float,
+        default=0.01,
+        help="hyperparameter for regularization in reward function",
+    )
+    parser.add_argument(
+        "--regularize",
+        action="store_true",
+        help="Set this value to add regularization to the reward function",
+    )
     parser.add_argument(
         "--eval_only",
         action="store_true",
@@ -130,7 +137,9 @@ def get_options(args=None):
     parser.add_argument(
         "--eval_output", type=str, default=".", help="path to output evaulation plots",
     )
-
+    parser.add_argument(
+        "--load_path", type=str, default=".", help="path to model's parameters",
+    )
     # Misc
     parser.add_argument(
         "--tune",
