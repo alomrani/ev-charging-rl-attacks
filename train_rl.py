@@ -198,8 +198,9 @@ def eval(agent, dataloader, opts):
       r, log, _ = run_env(agent, x, opts)
 
     average_reward.append(-r.mean().item())
-
-  return np.array(average_reward).mean(), torch.cat((x[0, :].unsqueeze(0), torch.tensor(purturbed_sequence).unsqueeze(0)), dim=0)
+  if opts.eval_only:
+    return np.array(average_reward).mean(), torch.cat((x[0, :].unsqueeze(0), torch.tensor(purturbed_sequence).unsqueeze(0)), dim=0)
+  return np.array(average_reward).mean()
 
 
 
