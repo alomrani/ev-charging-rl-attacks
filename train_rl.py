@@ -4,7 +4,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 # from imblearn.over_sampling import ADASYN
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, dataloader
 from torch.optim import Adam
 from options import get_options
 from soc_dataset import SoCDataset
@@ -32,9 +32,7 @@ def train(opts):
   
 
   # env = charging_ev(num_cars, num_timesteps, total_power, epsilon, battery_capacity, opts.device, batch_size)
-  if not opts.tune and not opts.train_seed:
-    train_epoch(train_dataset, train_dataset, opts)
-  elif opts.train_seed:
+  if opts.train_seed:
     seeds = [1234, 4321, 1098, 7890]
     agents = []
     rewards = []
@@ -52,12 +50,8 @@ def train(opts):
     seaborn.set(style="darkgrid", font_scale=1)
     seaborn.tsplot(data=rewards)
     plt.savefig(opts.save_dir + "/avg_rewards_seed.png")
-
-
     
-    
-
-  else:
+  elif opts.tune:
     PARAM_GRID = list(product(
             [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.00002, 0.04, 0.004, 0.0004, 0.00004],  # learning_rate
             [0.7, 0.75, 0.8, 0.85, 0.9, 0.95],  # baseline exponential decay
@@ -92,6 +86,17 @@ def train(opts):
 
     with open(SCOREFILE, "a") as f:
       f.write(f'{"Best params: " + ",".join(map(str, best_params + (avg_r,)))}\n')
+  elif opts.eval_only:
+    val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+    agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
+    load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
+    agent.load_state_dict(load_data)
+    r = eval(agent, val_loader, opts)
+    print(f"Mean reward: {r}")
+
+  else:
+    train_epoch(train_dataset, train_dataset, opts)
+
 
 
 
@@ -99,6 +104,7 @@ def train(opts):
 def run_env(agent, batch, opts):
   env = charging_ev(opts)
   log = torch.zeros(opts.batch_size, 1, device=opts.device)
+  total_purturbation = torch.zeros(opts.batch_size, 1, device=opts.device)
   while not env.finished():
     num_charging = torch.poisson(torch.ones(opts.batch_size, device=opts.device) * opts.lamb)
     num_charging[num_charging > opts.num_cars - 1] = opts.num_cars - 1
@@ -108,12 +114,13 @@ def run_env(agent, batch, opts):
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
     a, log_p = agent.sample(requests.float())
+    total_purturbation += torch.abs(a)[:, None]
     requests[:, 0] += a
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
     r = -env.step(requests)[:, 0] / float(env.time)
     log += log_p.unsqueeze(1)
-  return r, log
+  return r, log, total_purturbation
 
 def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_reward, opts):
 
@@ -121,8 +128,9 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
   for i, (x, y) in enumerate(tqdm(train_loader)):
     x = x.to(torch.device(opts.device))
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
-    r, log = run_env(agent, x, opts)
-
+    r, log, total_purturbs = run_env(agent, x, opts)
+    if opts.regularize:
+      r = r + total_purturbs * opts.gamma * opts.battery_capacity
     rewards.append(r.mean())
     optimizer.zero_grad()
     loss = ((r.unsqueeze(1) - baseline.eval(r)) * log).mean()
@@ -173,7 +181,7 @@ def eval(agent, dataloader, opts):
   average_reward = []
   for i, (x, y) in enumerate(dataloader):
     x = x.to(opts.device)
-    r, log = run_env(agent, x, opts)
+    r, log, _ = run_env(agent, x, opts)
     average_reward.append(-r.mean().item())
 
   return np.array(average_reward).mean()
