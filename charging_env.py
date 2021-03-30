@@ -28,7 +28,6 @@ class charging_ev():
 
     A = pi / p
     A, I = torch.sort(A, descending=True)
-    print(A)
     for i in range(len(A[0])):
       power = p.gather(1, I[:, i].unsqueeze(1))
       added_power = torch.nn.functional.one_hot(I[:, i], num_classes=self.num_cars) * power
