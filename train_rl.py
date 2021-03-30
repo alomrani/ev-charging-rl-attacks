@@ -130,8 +130,8 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
     r, log, total_purturbs = run_env(agent, x, opts)
     if opts.regularize:
-      r = r + total_purturbs * opts.gamma * opts.battery_capacity
-    rewards.append(r.mean())
+      r = r + total_purturbs.reshape_as(r) * opts.gamma * opts.battery_capacity
+    rewards.append(r.mean().item())
     optimizer.zero_grad()
     loss = ((r.unsqueeze(1) - baseline.eval(r)) * log).mean()
 
