@@ -53,7 +53,7 @@ def train(opts):
     
   elif opts.tune:
     PARAM_GRID = list(product(
-            [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.00002, 0.04, 0.004, 0.0004, 0.00004],  # learning_rate
+            [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.004, 0.0004, 0.00004],  # learning_rate
             [0.7, 0.75, 0.8, 0.85, 0.9, 0.95],  # baseline exponential decay
             [0.99, 0.98, 0.97, 0.96, 0.95]  # lr decay
         ))
@@ -64,7 +64,7 @@ def train(opts):
     # this worker's array index. Assumes slurm array job is zero-indexed
     # defaults to zero if not running under SLURM
     this_worker = int(os.getenv("SLURM_ARRAY_TASK_ID", 0))
-    SCOREFILE = os.path.expanduser("./val_rewards.csv")
+    SCOREFILE = os.path.expanduser(f"./val_rewards_{opts.gamma}_{opts.num_cars}.csv")
     max_val = 0.
     best_params = []
     for param_ix in range(this_worker, len(PARAM_GRID), N_WORKERS):
@@ -77,15 +77,15 @@ def train(opts):
       agent, _ = train_epoch(train_dataset, val_dataset, opts)
       val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
       avg_r = eval(agent, val_loader, opts)
-      if avg_r > max_val:
-        best_params = params
-        max_val = avg_r
+     # if avg_r > max_val:
+     #   best_params = params
+     #   max_val = avg_r
 
       with open(SCOREFILE, "a") as f:
         f.write(f'{",".join(map(str, params + (avg_r,)))}\n')
 
-    with open(SCOREFILE, "a") as f:
-      f.write(f'{"Best params: " + ",".join(map(str, best_params + (avg_r,)))}\n')
+    #with open(SCOREFILE, "a") as f:
+    #  f.write(f'{"Best params: " + ",".join(map(str, best_params + (avg_r,)))}\n')
   elif opts.eval_only:
     val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
     agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
@@ -123,7 +123,7 @@ def run_env(agent, batch, opts):
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
     a, log_p = agent.sample(requests.float())
-    total_purturbation += torch.abs(a)[:, None]
+    total_purturbation += torch.abs(torch.clamp(a, -1., 1.))[:, None]
     requests[:, 0] += a
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
@@ -131,8 +131,8 @@ def run_env(agent, batch, opts):
     r = -env.step(requests)[:, 0] / float(env.time)
     log += log_p.unsqueeze(1)
   if opts.eval_only:
-    return r, log, total_purturbation, np.array(random_sequence)
-  return r, log, total_purturbation
+    return r, log, total_purturbation / float(env.time), np.array(random_sequence)
+  return r, log, total_purturbation / float(env.time)
 
 def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_reward, opts):
 
@@ -141,7 +141,7 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
     x = x.to(torch.device(opts.device))
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
     r, log, total_purturbs = run_env(agent, x, opts)
-    r = r + total_purturbs * opts.gamma * opts.battery_capacity
+    r = r + total_purturbs.squeeze(1) * opts.gamma * opts.battery_capacity
     rewards.append(r.mean().item())
     optimizer.zero_grad()
     loss = ((r.unsqueeze(1) - baseline.eval(r)) * log).mean()
@@ -172,7 +172,7 @@ def train_epoch(train_dataset, val_dataset, opts):
     lr_scheduler.step()
     if not opts.tune:
       r_val = eval(agent, val_loader, opts)
-      print(f"Epoch {epoch}: Average Reward {-r_val.mean()}")
+      print(f"Epoch {epoch}: Average Reward {r_val.mean()}")
   if not opts.tune:
     plt.figure(1)
     line1, = plt.plot(np.arange(len(average_reward)), average_reward)
@@ -195,10 +195,10 @@ def eval(agent, dataloader, opts):
   for i, (x, y) in enumerate(dataloader):
     x = x.to(opts.device)
     if opts.eval_only:
-      r, log, _, purturbed_sequence = run_env(agent, x, opts)
+      r, log, total_purturbs, purturbed_sequence = run_env(agent, x, opts)
     else:
-      r, log, _ = run_env(agent, x, opts)
-
+      r, log, total_purturbs = run_env(agent, x, opts)
+    r = r + total_purturbs.squeeze(1) * opts.gamma * opts.battery_capacity
     average_reward.append(-r.mean().item())
   if opts.eval_only:
     return np.array(average_reward).mean(), torch.cat((x[0, :].unsqueeze(0), torch.tensor(purturbed_sequence).unsqueeze(0)), dim=0)
@@ -208,3 +208,5 @@ def eval(agent, dataloader, opts):
 
 if __name__ == "__main__":
   train(get_options())
+
+
