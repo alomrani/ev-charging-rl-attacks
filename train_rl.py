@@ -17,10 +17,11 @@ from itertools import product
 import json
 import seaborn
 
+from DetectionModelDNN import DetectionModelDNN
 def train(opts):
 
   torch.random.manual_seed(opts.seed)
-  if not os.path.exists(opts.save_dir):
+  if not os.path.exists(opts.save_dir) and not opts.eval_detect:
         os.makedirs(opts.save_dir)
     # Save arguments so exact configuration can always be found
         with open(os.path.join(opts.save_dir, "args.json"), "w") as f:
@@ -31,6 +32,8 @@ def train(opts):
 #  val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
   
 
+  # val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
+  test_data = torch.load(opts.test_dataset)
   # env = charging_ev(num_cars, num_timesteps, total_power, epsilon, battery_capacity, opts.device, batch_size)
   if opts.train_seed:
     seeds = [1234, 4321, 1098, 7890]
@@ -77,15 +80,13 @@ def train(opts):
       agent, _ = train_epoch(train_dataset, val_dataset, opts)
       val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
       avg_r = eval(agent, val_loader, opts)
-     # if avg_r > max_val:
-     #   best_params = params
-     #   max_val = avg_r
+      # if avg_r > max_val:
+      #   best_params = params
+      #   max_val = avg_r
 
       with open(SCOREFILE, "a") as f:
         f.write(f'{",".join(map(str, params + (avg_r,)))}\n')
 
-    #with open(SCOREFILE, "a") as f:
-    #  f.write(f'{"Best params: " + ",".join(map(str, best_params + (avg_r,)))}\n')
   elif opts.eval_only:
     val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
     agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
@@ -94,26 +95,55 @@ def train(opts):
     r, purtubed = eval(agent, val_loader, opts)
     plt.figure(4)
     ax1, = plt.plot(np.arange(opts.num_timesteps), np.array(purtubed[0, :]))
-    ax2, = plt.plot(np.arange(opts.num_timesteps), np.array(purtubed[1, :]))
+    ax2, = plt.plot(np.arange(opts.num_timesteps), np.array(purtubed[-1, :]))
     plt.xlabel("Timestep")
     plt.ylabel("SoC value")
     plt.title(f"Benign vs Malicious reported SoC Sequence gamma={opts.gamma}")
     plt.legend([ax1, ax2], ["benign", "malicious"])
     plt.savefig(opts.save_dir + "/spoof_vs_normal.png")
     print(f"Mean reward: {r}")
+  elif opts.eval_detect:
+    agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
+    load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
+    agent.load_state_dict(load_data)
+    eval_detect(agent, val_dataset, opts)
+  elif opts.eval_detect_range:
+    accuracies = []
+    for i in range(len(opts.eval_range)):
+      data = opts.load_paths[i]
+      agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
+      load_data = torch.load(data, map_location=torch.device(torch.device(opts.device)))
+      agent.load_state_dict(load_data)
+      accuracies.append(eval_detect(agent, opts))
+    plt.figure(5)
+    plt.plot(np.arange(len(opts.eval_range)), np.array(accuracies))
+    plt.title("Detection Accuracy Against RL Attacks")
+    plt.xlabel("Gamma")
+    plt.ylabel("Accuracy")
 
   else:
     train_epoch(train_dataset, train_dataset, opts)
 
 
+def eval_detect(agent, val_dataset, opts):
+  val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+  r, purturbed = eval(agent, val_loader, opts)
+  model = DetectionModelDNN(768, opts.num_timesteps, opts.p).to(opts.device)
+  model.eval()
+  load_data = torch.load(opts.load_path2, map_location=torch.device(torch.device(opts.device)))
+  model.load_state_dict(load_data)
+  out = model(purturbed[1:, :].float()).detach()
+  acc = (out.argmax(1) == 1).float().sum() / (purturbed.size(0) - 1)
 
+  print(f"Detection Accuracy against RL attacks: {acc}")
+  return acc
 
 
 def run_env(agent, batch, opts):
   env = charging_ev(opts)
   log = torch.zeros(opts.batch_size, 1, device=opts.device)
   total_purturbation = torch.zeros(opts.batch_size, 1, device=opts.device)
-  random_sequence = []
+  purturbed_sequence = []
   while not env.finished():
     num_charging = torch.poisson(torch.ones(opts.batch_size, device=opts.device) * opts.lamb)
     num_charging[num_charging > opts.num_cars - 1] = opts.num_cars - 1
@@ -127,11 +157,12 @@ def run_env(agent, batch, opts):
     requests[:, 0] += a
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
-    random_sequence.append(requests[0, 0])
-    r = -env.step(requests)[:, 0] / float(env.time)
+    purturbed_sequence.append(list(requests[:, 0]))
+    power = env.step(requests)
+    r = -power[:, 0] / float(env.time)
     log += log_p.unsqueeze(1)
-  if opts.eval_only:
-    return r, log, total_purturbation / float(env.time), np.array(random_sequence)
+  if opts.eval_only or opts.eval_detect:
+    return r, log, total_purturbation / float(env.time), np.array(purturbed_sequence).T
   return r, log, total_purturbation / float(env.time)
 
 def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_reward, opts):
@@ -192,16 +223,19 @@ def train_epoch(train_dataset, val_dataset, opts):
 def eval(agent, dataloader, opts):
   agent.eval()
   average_reward = []
+  purturbed_sequences = []
   for i, (x, y) in enumerate(dataloader):
     x = x.to(opts.device)
-    if opts.eval_only:
+    if opts.eval_only or opts.eval_detect:
       r, log, total_purturbs, purturbed_sequence = run_env(agent, x, opts)
+      purturbed_sequences.append(torch.tensor(purturbed_sequence))
     else:
       r, log, total_purturbs = run_env(agent, x, opts)
     r = r + total_purturbs.squeeze(1) * opts.gamma * opts.battery_capacity
     average_reward.append(-r.mean().item())
-  if opts.eval_only:
-    return np.array(average_reward).mean(), torch.cat((x[0, :].unsqueeze(0), torch.tensor(purturbed_sequence).unsqueeze(0)), dim=0)
+  if opts.eval_only or opts.eval_detect:
+    concat = torch.stack(purturbed_sequences, dim=0)
+    return np.array(average_reward).mean(), torch.cat((x[-1, :].unsqueeze(0), concat.reshape(concat.size(0)*concat.size(1), -1)), dim=0)
   return np.array(average_reward).mean()
 
 

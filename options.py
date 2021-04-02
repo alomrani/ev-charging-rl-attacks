@@ -32,12 +32,23 @@ def get_options(args=None):
         help="Number of instances used for reporting validation performance",
     )
     parser.add_argument(
+        "--p",
+        type=float,
+        default=0.6,
+        help="dropout rate",
+    )
+    parser.add_argument(
         "--val_dataset",
         type=str,
         default="rl_val.pt",
         help="Dataset file to use for validation",
     )
-
+    parser.add_argument(
+        "--test_dataset",
+        type=str,
+        default="rl_test.pt",
+        help="Dataset file to use for testing",
+    )
     parser.add_argument(
         "--train_dataset",
         type=str,
@@ -129,6 +140,16 @@ def get_options(args=None):
         help="Set this value to only evaluate model on a specific graph size",
     )
     parser.add_argument(
+        "--eval_detect",
+        action="store_true",
+        help="Set this value to only evaluate agent on the detection model",
+    )
+    parser.add_argument(
+        "--eval_detect_range",
+        action="store_true",
+        help="Set this value to only evaluate multiple agents on the detection model",
+    )
+    parser.add_argument(
         "--train_seed",
         action="store_true",
         help="train agent on different seeds and plot avg rewards",
@@ -138,7 +159,13 @@ def get_options(args=None):
         "--eval_output", type=str, default=".", help="path to output evaulation plots",
     )
     parser.add_argument(
-        "--load_path", type=str, default=".", help="path to model's parameters",
+        "--load_path", type=str, default=".", help="path to agent's parameters",
+    )
+    parser.add_argument(
+        "--load_path2", type=str, default="./best_model.pt", help="path to detection model's parameters",
+    )
+    parser.add_argument(
+        "--load_paths", nargs="+", default=[], help="path to agent's parameters",
     )
     # Misc
     parser.add_argument(
