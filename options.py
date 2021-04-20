@@ -12,10 +12,10 @@ def get_options(args=None):
 
     # Data
     parser.add_argument(
-        "--problem",
+        "--attack_model",
         type=str,
-        default="obm",
-        help="Problem: 'obm', 'e-obm', 'adwords' or 'displayads'",
+        default="rl-agent",
+        help="Attack type: 'rl-agent', 'attack1', 'attack2', 'attack3', 'attack4'",
     )
 
     parser.add_argument(
@@ -150,6 +150,11 @@ def get_options(args=None):
         help="Set this value to only evaluate multiple agents on the detection model",
     )
     parser.add_argument(
+        "--create_mal_dataset",
+        action="store_true",
+        help="Set this value to create dataset using rl agent attacks",
+    )
+    parser.add_argument(
         "--train_seed",
         action="store_true",
         help="train agent on different seeds and plot avg rewards",
@@ -159,7 +164,7 @@ def get_options(args=None):
         "--eval_output", type=str, default=".", help="path to output evaulation plots",
     )
     parser.add_argument(
-        "--load_path", type=str, default=".", help="path to agent's parameters",
+        "--load_path", type=str, default=None, help="path to agent's parameters",
     )
     parser.add_argument(
         "--load_path2", type=str, default="./best_model.pt", help="path to detection model's parameters",
