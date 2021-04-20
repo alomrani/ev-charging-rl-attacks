@@ -3,9 +3,9 @@ import math
 import torch
 import numpy as np
 
-class mal_agent(nn.Module):
-  def __init__(self, hidden_size, input_size):
-    super(mal_agent, self).__init__()
+class mal_rl_agent(nn.Module):
+  def __init__(self, hidden_size, input_size, opts):
+    super(mal_rl_agent, self).__init__()
     self.net = nn.Sequential(
         nn.Linear(input_size, hidden_size),
         nn.ReLU(),
