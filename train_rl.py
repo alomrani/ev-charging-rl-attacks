@@ -53,6 +53,7 @@ def train(opts):
     seaborn.set(style="darkgrid", font_scale=1)
     seaborn.tsplot(data=rewards)
     plt.savefig(opts.save_dir + "/avg_rewards_seed.png")
+    torch.save(torch.tensor(rewards), f"rewards_per_seed_{opts.gamma}.pt")
     
   elif opts.tune:
     PARAM_GRID = list(product(
