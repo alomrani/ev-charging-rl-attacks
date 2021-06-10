@@ -7,7 +7,7 @@ import torch
 
 def get_options(args=None):
     parser = argparse.ArgumentParser(
-        description="RL agent to generate attacks for training a detection model."
+        description="Options for training RL agent to generate attacks for training a detection model."
     )
 
     # Data
@@ -40,19 +40,19 @@ def get_options(args=None):
     parser.add_argument(
         "--val_dataset",
         type=str,
-        default="rl_val.pt",
+        default="rl_datasets/rl_val.pt",
         help="Dataset file to use for validation",
     )
     parser.add_argument(
         "--test_dataset",
         type=str,
-        default="rl_test.pt",
+        default="rl_datasets/rl_test.pt",
         help="Dataset file to use for testing",
     )
     parser.add_argument(
         "--train_dataset",
         type=str,
-        default="rl_train.pt",
+        default="rl_datasets/rl_train.pt",
         help="Dataset file to use for training",
     )
 

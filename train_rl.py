@@ -10,11 +10,11 @@ from options import get_options
 from soc_dataset import SoCDataset
 from reinforce_baseline import ExponentialBaseline
 
-from DNNAgent import mal_rl_agent
-from spoof_agent1 import mal_agent1
-from spoof_agent2 import mal_agent2
-from spoof_agent3 import mal_agent3
-from spoof_agent4 import mal_agent4
+from attack_policy.DNNAgent import mal_rl_agent
+from attack_policy.spoof_agent1 import mal_agent1
+from attack_policy.spoof_agent2 import mal_agent2
+from attack_policy.spoof_agent3 import mal_agent3
+from attack_policy.spoof_agent4 import mal_agent4
 from charging_env import charging_ev
 import os
 from itertools import product
