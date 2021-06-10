@@ -34,15 +34,18 @@ def train_dnn(opts):
   train_dataset = torch.load(opts.train_dataset)
 #  train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
   val_dataset = torch.load(opts.val_dataset)
+  test_dataset = torch.load(opts.test_dataset)
 #  val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
-  
+
 
   # val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
   test_dataset = torch.load(opts.test_dataset)
 
   train_loader = DataLoader(SoCDataset(train_dataset[:, :-1], train_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
   val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
-
+  test_loader = DataLoader(SoCDataset(test_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+  print(train_dataset.shape)
+  
   if opts.eval_only:
     model = DetectionModelDNN(opts.hidden_size, opts.num_timesteps, opts.p).to(opts.device)
 
@@ -50,7 +53,7 @@ def train_dnn(opts):
       load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
       model.load_state_dict(load_data)
     loss = nn.CrossEntropyLoss
-    val_acc, val_loss = eval(model, val_loader, loss, opts)
+    val_acc, val_loss = eval(model, test_loader, loss, opts)
   elif opts.tune:
     PARAM_GRID = list(product(
             [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.004, 0.0004, 0.00004],  # learning_rate

@@ -52,7 +52,7 @@ def get_options(args=None):
     parser.add_argument(
         "--train_dataset",
         type=str,
-        default="detection_train.pt",
+        default="detection_train_syn.pt",
         help="Dataset file to use for training",
     )
 

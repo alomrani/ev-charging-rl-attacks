@@ -146,6 +146,8 @@ def train(opts):
     plt.savefig("attacks_detect.png")
   elif opts.create_mal_dataset:
     agent = mal_agent(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
+    agent1 = mal_agent1(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
+    agent2 = mal_agent2(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
     # if opts.load_path is not None:
     #   load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
     #   agent.load_state_dict(load_data)
@@ -158,13 +160,18 @@ def train(opts):
     loader_benign = DataLoader(SoCDataset(benign_dataset[:, :-1], benign_dataset[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
     loader_val = DataLoader(SoCDataset(val_dataset_b[:, :-1], val_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
     loader_test = DataLoader(SoCDataset(test_dataset_b[:, :-1], test_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
-    mal_dataset = generate_mal_samples(agent, loader_benign, opts)
+    mal_dataset1 = generate_mal_samples(agent, loader_benign, opts)
+    _, mal_dataset2, *_ = eval(agent1, loader_benign, opts)
+    _, mal_dataset3, *_ = eval(agent2, loader_benign, opts)
+    mal_dataset2 = torch.cat((mal_dataset2, torch.ones(mal_dataset2.size(0), 1)), dim=1)
+    mal_dataset3 = torch.cat((mal_dataset3, torch.ones(mal_dataset3.size(0), 1)), dim=1)
+    mal_dataset = torch.cat((mal_dataset1, mal_dataset2, mal_dataset3), dim=0)
     idx = torch.randperm(mal_dataset.shape[0])
     mal_dataset = mal_dataset[idx].view(mal_dataset.size())
     # mal_dataset_val = generate_mal_samples(agent, loader_val, opts)
     # mal_dataset_test = generate_mal_samples(agent, loader_test, opts)
     train_dataset_imb = torch.cat((train_dataset_b, mal_dataset[:-4000, :]), dim=0)
-    ada = ADASYN(random_state=42, sampling_strategy=1., n_neighbors=5)
+    ada = ADASYN(random_state=42, n_neighbors=5)
     x = train_dataset_imb[:, :-1]
     y = train_dataset_imb[:, -1]
     soc_data, label = ada.fit_resample(x, y)
@@ -175,9 +182,9 @@ def train(opts):
     train_dataset_balanced = train_dataset_balanced[idx].view(train_dataset_balanced.size())
     validation_rl_whole = torch.cat((val_dataset_b, mal_dataset[-4000:-2000, :]), dim=0)
     test_rl_whole = torch.cat((test_dataset_b, mal_dataset[-2000:, :]), dim=0)
-    torch.save(train_dataset_balanced, "detection_train.pt")
-    torch.save(validation_rl_whole, "detection_val.pt")
-    torch.save(test_rl_whole, "detection_test.pt")
+    torch.save(train_dataset_balanced, "detection_train_syn.pt")
+    torch.save(validation_rl_whole, "detection_val_syn.pt")
+    torch.save(test_rl_whole, "detection_test_syn.pt")
 
   else:
     train_epoch(mal_agent, train_dataset, val_dataset, opts)
@@ -196,10 +203,11 @@ def generate_mal_samples(agent, loader, opts):
   mal_dataset = torch.cat((mal_dataset, torch.ones(mal_dataset.size(0), 1)), dim=1)
   return mal_dataset
 
+
 def eval_detect(agent, val_dataset, opts):
   val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
   r, purturbed, *_ = eval(agent, val_loader, opts)
-  model = DetectionModelDNN(768, opts.num_timesteps, opts.p).to(opts.device)
+  model = DetectionModelDNN(784, opts.num_timesteps, opts.p).to(opts.device)
   model.eval()
   load_data = torch.load(opts.load_path2, map_location=torch.device(torch.device(opts.device)))
   model.load_state_dict(load_data)
@@ -226,7 +234,7 @@ def run_env(agent, batch, opts):
     requests[requests > 1.] = 1.
     a, log_p = agent.sample(requests.float())
     total_purturbation += torch.abs(torch.clamp(a, -1., 1.))[:, None]
-    requests[:, 0] += a
+#    requests[:, 0] += a
     requests[requests < 0.] = 0.
     requests[requests > 1.] = 1.
     purturbed_sequence.append(list(requests[:, 0]))
