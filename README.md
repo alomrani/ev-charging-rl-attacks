@@ -18,6 +18,8 @@ The datasets for the detection models can be found in *dnn_datasets* directory
 
 Each sample in these datasets contains a SoC sequence of an EV over the period of 24 hours (reported every 30 min). Therefore, **each sample is of size 49 including the label i.e. whether the sample is malicious or not**
 
+*soc_dataset.py*: PyTorch dataset class for defining how to retrieve samples from the dataset
+
 ## RL Environment
 
 *charging_env.py*: Contains code for charging simulation
