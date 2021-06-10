@@ -2,17 +2,21 @@
 
 ## Training
 
-Code for training the detection model can be found in train_dnn.py
+*train_dnn.py*: code for training the detection model.
 
-Code for training the RL agent can be found in train_rl.py
+*train_rl.py*: code for training the RL agent.
+
+*options.py*: arguments for training the RL agent.
+
+*options1.py*: arguments for training the detection model.
 
 ## Datasets
 
-The training/validation/testing datasets for the RL agent can be found in the train/val/test_rl.pt files
+The training/validation/testing datasets for the RL agent can be found in the *rl_datasets* directory
 
-The datasets for the detection models can be found in dnn_datasets directory
+The datasets for the detection models can be found in *dnn_datasets* directory
 
-Each sample in these datasets contains a SoC sequence of an EV over the period of 24 hours (reported every 30 min). Therefore, each sample is of size 49 including the label (whether the sample is malicious or not)
+Each sample in these datasets contains a SoC sequence of an EV over the period of 24 hours (reported every 30 min). Therefore, **each sample is of size 49 including the label i.e. whether the sample is malicious or not**
 
 ## RL Environment
 
