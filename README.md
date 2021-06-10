@@ -1,4 +1,4 @@
-# ev-charging-rl-attacks
+# Detecting SoC False Reporting Attacks using Deep Learning: A Reinforcement Learning Approach
 
 ## Training
 
