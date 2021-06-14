@@ -33,12 +33,12 @@ See `options.py` for other arguments that can be specified.
 
 ## Attacks policies
 
-*DNNAgent.py*: Model for the adversarial RL agent.
-*spoof_agentX.py*: Model for agent which follows synthetic Attack strategy X (See paper for synthetic attacks considered).
+`DNNAgent.py`: Model for the adversarial RL agent.
+`spoof_agentX.py`: Model for agent which follows synthetic Attack strategy X (See paper for synthetic attacks considered).
 
 ## Detection Model
 
-*DetectionModelDNN.py*: Defined the DNN architecture of the detection model.
+`DetectionModelDNN.py`: Defined the DNN architecture of the detection model.
 
 
 # 2. Datasel Manual
