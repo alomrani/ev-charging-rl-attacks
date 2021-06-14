@@ -15,7 +15,7 @@
 
 To train a detection model on a dataset, use the following command and input required arguments:
 
-`python train_ddn.py --lr_model LEARNING_RATE --lr_decay LEARNING_RATE_DECAY --n_epochs NUM_EPOCHS --batch_size BATCH_SIZE`
+`python train_dnn.py --lr_model LEARNING_RATE --lr_decay LEARNING_RATE_DECAY --n_epochs NUM_EPOCHS --batch_size BATCH_SIZE`
  
 See `options1.py` for other arguments that can be specified.
 
@@ -73,11 +73,11 @@ To test detection accuracy on a synthetic attack:
 
 # 2. Datasel Manual
 
-The training/validation/testing datasets for the RL agent can be found in the `rl_datasets` directory:
-- Files with name formal `dataset_X_syn.py` correspong to dataset with both synthetic and intelligent attacks.
-- Files with format `dataset_X.pt` correspond to dataset with intelligent attacks only.
+The training/validation/testing datasets for the RL agent can be found in the `rl_datasets` directory.
 
-The datasets for the detection models can be found in `dnn_datasets` directory.
+The datasets for the detection models can be found in `dnn_datasets` directory:
+- Files with name formal `dataset_X_syn.py` correspond to dataset with both synthetic and intelligent attacks.
+- Files with name format `dataset_X.pt` correspond to dataset with intelligent attacks only.
 
 Each sample in these datasets contains a SoC sequence of an EV over the period of 24 hours (reported every 30 min). Therefore, **each sample is of size 49 including the label i.e. whether the sample is malicious or not**.
 
