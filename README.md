@@ -46,6 +46,14 @@ To test a synthetic attack strategy:
 
 Where `X` represents the synthetic attack type and can be any of `1-4`.
 
+To test the detection accuracy of a DNN model on RL agent attacks:
+
+`python train_rl.py --eval_detect --load_path PATH_TO_TRAINED_AGENT --load_path2 PATH_TO_DETECTION_MODEL --gamma GAMMA --regularize`
+
+To test detection accuracy on a synthetic attack:
+
+`python train_rl.py --eval_detect --load_path PATH_TO_TRAINED_AGENT --attack_model attackX`
+
 ## RL Environment
 
 `charging_env.py`: Contains code for charging simulation.
