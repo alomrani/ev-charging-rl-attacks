@@ -17,6 +17,8 @@ To train a detection model on a dataset, use the following command and input req
 
 `python train_dnn.py --lr_model LEARNING_RATE --lr_decay LEARNING_RATE_DECAY --n_epochs NUM_EPOCHS --batch_size BATCH_SIZE`
  
+You may also add `--train_dataset TRAIN_PATH --val_dataset VAL_PATH --test_dataset TEST_PATH`, to specify training/val/test dataset.
+
 See `options1.py` for other arguments that can be specified.
 
 Outputs of a run will be saved to `outputs/dnn/run_X`
