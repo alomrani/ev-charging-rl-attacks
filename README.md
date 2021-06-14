@@ -1,4 +1,4 @@
-# Program Manual
+# 1. Program Manual
 
 
 ## Training
@@ -40,7 +40,8 @@ See `options.py` for other arguments that can be specified.
 
 *DetectionModelDNN.py*: Defined the DNN architecture of the detection model.
 
-# Datasel Manual
+
+# 2. Datasel Manual
 
 The training/validation/testing datasets for the RL agent can be found in the `rl_datasets` directory.
 
