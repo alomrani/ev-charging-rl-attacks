@@ -66,6 +66,7 @@ To test detection accuracy on a synthetic attack:
 ## Attacks policies
 
 `DNNAgent.py`: Model for the adversarial RL agent.
+
 `spoof_agentX.py`: Model for agent which follows synthetic Attack strategy X (See paper for synthetic attacks considered).
 
 ## Detection Model
