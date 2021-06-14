@@ -113,11 +113,6 @@ def get_options(args=None):
         help="Exponential moving average baseline decay (default 0.8)",
     )
     parser.add_argument(
-        "--baseline",
-        default=None,
-        help="Baseline to use: 'rollout', 'critic' or 'exponential'. Defaults to no baseline.",
-    )
-    parser.add_argument(
         "--gamma",
         type=float,
         default=0.01,
