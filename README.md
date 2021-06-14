@@ -42,6 +42,7 @@ To test a trained RL agent in the charging simulation, run the following with th
 `python train_rl.py --eval_only --load_path PATH_TO_TRAINED_AGENT`, add the arguments `--regularize --gamma GAMMA` if agent was trained with gamma regularization.
 
 To test a synthetic attack strategy:
+
 `python train_rl.py --eval_only --attack_model attackX`
 
 Where `X` represents the synthetic attack type and can be any of `1-4`.
