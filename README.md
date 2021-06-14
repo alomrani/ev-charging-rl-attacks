@@ -25,7 +25,8 @@ To train an RL agent with gamma=0, use the following command and input required 
 
 `python train_rl.py --lr_model LEARNING_RATE --lr_decay LEARNING_RATE_DECAY --n_epochs NUM_EPOCHS --batch_size BATCH_SIZE --exp_beta EXP_BETA`
 
-To train an RL agent with gamma regularization, add the arguments `--regularize --gamma GAMMA`
+To train an RL agent with gamma regularization, add the arguments `--regularize --gamma GAMMA`.
+
 See `options.py` for other arguments that can be specified.
 
 Outputs of a run will saved to `outputs/[NUM_CARS]_[GAMMA]/run_X`
