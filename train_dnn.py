@@ -84,14 +84,15 @@ def train_dnn(opts):
       with open(SCOREFILE, "a") as f:
         f.write(f'{",".join(map(str, params + (val_acc,)))}\n')
   else:
-    train_l, val_l, val_ac = train_epoch(train_loader, val_loader, opts)
+    model, train_l, val_l, val_ac = train_epoch(train_loader, val_loader, opts)
     plt.figure(1)
-    line1, = plt.plot(np.arange(opts.num_epochs), train_l)
-    line2, = plt.plot(np.arange(opts.num_epochs), val_l)
+    line1, *_ = plt.plot(np.arange(opts.n_epochs), np.array(train_l))
+    line2, *_ = plt.plot(np.arange(opts.n_epochs), np.array(val_l))
     plt.legend((line1, line2), ("Training Loss", "Validation Loss"))
-    plt.figure(2)
-    line2, = plt.plot(np.arange(opts.num_epochs), val_ac)
     plt.savefig(opts.save_dir + "/train_loss.png")
+    plt.figure(2)
+    line2, *_ = plt.plot(np.arange(opts.n_epochs), val_ac)
+    plt.savefig(opts.save_dir + "/val_acc.png")
 
 
 
@@ -109,7 +110,7 @@ def train_epoch(train_loader, val_loader, opts):
   max_acc = 0.
   val_acc = 0
   val_loss = 0
-  for epoch in range(opts.num_epochs):
+  for epoch in range(opts.n_epochs):
     val_acc = 0.
     for x, y in tqdm(train_loader):
       model.train()
@@ -125,8 +126,8 @@ def train_epoch(train_loader, val_loader, opts):
     if val_acc > max_acc and not opts.tune:
       max_acc = val_acc
       torch.save(model.state_dict(), opts.save_dir + "/best_model.pt".format(epoch))
-    train_l.append(train_loss)
-    val_l.append(val_loss)
+    train_l.append(train_loss.detach().item())
+    val_l.append(np.array(val_loss).mean().item())
     val_ac.append(val_acc)
     print("\nEpoch {}: Train Loss : {} Val Accuracy : {}".format(epoch, train_loss, val_acc))
     lr_scheduler.step()

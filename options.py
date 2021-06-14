@@ -84,12 +84,6 @@ def get_options(args=None):
         help="Dimension of hidden layers in Enc/Dec",
     )
     parser.add_argument(
-        "--num_epochs",
-        type=int,
-        default=10,
-        help="Number of training epochs",
-    )
-    parser.add_argument(
         "--num_timesteps",
         type=int,
         default=48,

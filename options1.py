@@ -84,12 +84,6 @@ def get_options(args=None):
         help="Dimension of hidden layers in Enc/Dec",
     )
     parser.add_argument(
-        "--num_epochs",
-        type=int,
-        default=1,
-        help="Number of training epochs",
-    )
-    parser.add_argument(
         "--num_timesteps",
         type=int,
         default=48,
@@ -108,7 +102,7 @@ def get_options(args=None):
     )
 
     parser.add_argument(
-        "--n_epochs", type=int, default=1000, help="The number of epochs to train"
+        "--n_epochs", type=int, default=10, help="The number of epochs to train"
     )
     parser.add_argument("--seed", type=int, default=1234, help="Random seed to use")
     parser.add_argument("--no_cuda", action="store_true", help="Disable CUDA")
@@ -200,7 +194,7 @@ def get_options(args=None):
     if not opts.regularize:
         opts.gamma = 0.
     opts.run_name = "{}_{}".format("run", time.strftime("%Y%m%dT%H%M%S"))
-    opts.save_dir = os.path.join(opts.output_dir, f"{opts.num_cars}_{opts.gamma}", opts.run_name)
+    opts.save_dir = os.path.join(opts.output_dir, "dnn", opts.run_name)
     # assert (
     #     opts.dataset_size % opts.batch_size == 0
     # ), "Epoch size must be integer multiple of batch size!"
