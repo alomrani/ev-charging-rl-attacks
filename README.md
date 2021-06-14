@@ -31,6 +31,15 @@ See `options.py` for other arguments that can be specified.
 
 Outputs of a run will saved to `outputs/[NUM_CARS]_[GAMMA]/run_X`
 
+## Evaluation
+
+To evaluate a trained detection model on the test dataset, run the following and add the path to model parameters:
+
+`python train_dnn.py --eval_only --load_path PATH_TO_TRAINED_MODEL`
+
+To test a trained RL agent in the charging simulation, run the following with the path to agent's parameters:
+
+`python train_rl.py --eval_only --load_path PATH_TO_TRAINED_AGENT`, add the arguments `--regularize --gamma GAMMA` if agent was trained with gamma regularization.
 
 
 ## RL Environment
