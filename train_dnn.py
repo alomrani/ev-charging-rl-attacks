@@ -53,7 +53,7 @@ def train_dnn(opts):
     val_acc, val_loss = eval(model, val_loader, loss, opts)
   elif opts.tune:
     PARAM_GRID = list(product(
-            [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.004, 0.0004, 0.00004],  # learning_rate
+            [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.00002, 0.03, 0.003, 0.0003, 0.00003, 0.004, 0.0004, 0.00004],  # learning_rate
             [0., 0.5, 0.6, 0.7, 0.75, 0.8, 0.85],  # dropout rate
             [1.0, 0.99, 0.98, 0.97, 0.96, 0.95]  # lr decay
         ))
@@ -64,7 +64,7 @@ def train_dnn(opts):
     # this worker's array index. Assumes slurm array job is zero-indexed
     # defaults to zero if not running under SLURM
     this_worker = int(os.getenv("SLURM_ARRAY_TASK_ID", 0))
-    SCOREFILE = os.path.expanduser(f"./val_acc.csv")
+    SCOREFILE = os.path.expanduser(f"./val_acc_with_syn.csv")
     for param_ix in range(this_worker, len(PARAM_GRID), N_WORKERS):
       torch.manual_seed(opts.seed)
       np.random.seed(opts.seed)
@@ -82,7 +82,7 @@ def train_dnn(opts):
       with open(SCOREFILE, "a") as f:
         f.write(f'{",".join(map(str, params + (val_acc,)))}\n')
   else:
-    train_l, val_l, val_ac = train_epoch(train_loader, val_loader, opts)
+    model, train_l, val_l, val_ac = train_epoch(train_loader, val_loader, opts)
     plt.figure(1)
     line1, = plt.plot(np.arange(opts.num_epochs), train_l)
     line2, = plt.plot(np.arange(opts.num_epochs), val_l)
@@ -122,7 +122,7 @@ def train_epoch(train_loader, val_loader, opts):
       val_acc, val_loss = eval(model, val_loader, l, opts)
     if val_acc > max_acc and not opts.tune:
       max_acc = val_acc
-      torch.save(model.state_dict(), opts.save_dir + "/best_model.pt".format(epoch))
+      torch.save(model.state_dict(), opts.save_dir + "/best_model.pt")
     train_l.append(train_loss)
     val_l.append(val_loss)
     val_ac.append(val_acc)

@@ -40,19 +40,19 @@ def get_options(args=None):
     parser.add_argument(
         "--val_dataset",
         type=str,
-        default="detection_val.pt",
+        default="detection_val_syn.pt",
         help="Dataset file to use for validation",
     )
     parser.add_argument(
         "--test_dataset",
         type=str,
-        default="detection_test.pt",
+        default="detection_test_syn.pt",
         help="Dataset file to use for testing",
     )
     parser.add_argument(
         "--train_dataset",
         type=str,
-        default="detection_train.pt",
+        default="detection_train_syn.pt",
         help="Dataset file to use for training",
     )
 
@@ -200,7 +200,7 @@ def get_options(args=None):
     if not opts.regularize:
         opts.gamma = 0.
     opts.run_name = "{}_{}".format("run", time.strftime("%Y%m%dT%H%M%S"))
-    opts.save_dir = os.path.join(opts.output_dir, f"{opts.num_cars}_{opts.gamma}", opts.run_name)
+    opts.save_dir = os.path.join(opts.output_dir, "dnn", opts.run_name)
     # assert (
     #     opts.dataset_size % opts.batch_size == 0
     # ), "Epoch size must be integer multiple of batch size!"
