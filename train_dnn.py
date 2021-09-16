@@ -9,12 +9,11 @@ from torch.optim import Adam
 from options1 import get_options
 from soc_dataset import SoCDataset
 from reinforce_baseline import ExponentialBaseline
-
-from DNNAgent import mal_rl_agent
-from spoof_agent1 import mal_agent1
-from spoof_agent2 import mal_agent2
-from spoof_agent3 import mal_agent3
-from spoof_agent4 import mal_agent4
+from attack_policy.DNNAgent import mal_rl_agent
+from attack_policy.spoof_agent1 import mal_agent1
+from attack_policy.spoof_agent2 import mal_agent2
+from attack_policy.spoof_agent3 import mal_agent3
+from attack_policy.spoof_agent4 import mal_agent4
 from charging_env import charging_ev
 from DetectionModelDNN import DetectionModelDNN
 import os
@@ -34,23 +33,27 @@ def train_dnn(opts):
   train_dataset = torch.load(opts.train_dataset)
 #  train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
   val_dataset = torch.load(opts.val_dataset)
+  test_dataset = torch.load(opts.test_dataset)
 #  val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
-  
+
 
   # val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
   test_dataset = torch.load(opts.test_dataset)
 
   train_loader = DataLoader(SoCDataset(train_dataset[:, :-1], train_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
   val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
-
+  test_loader = DataLoader(SoCDataset(test_dataset[:, :-1], test_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+  print(train_dataset.shape)
+  
   if opts.eval_only:
     model = DetectionModelDNN(opts.hidden_size, opts.num_timesteps, opts.p).to(opts.device)
 
     if opts.load_path is not None:
       load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
       model.load_state_dict(load_data)
-    loss = nn.CrossEntropyLoss
-    val_acc, val_loss = eval(model, val_loader, loss, opts)
+    loss = nn.CrossEntropyLoss()
+    val_acc, val_loss = eval(model, test_loader, loss, opts)
+    print(val_acc)
   elif opts.tune:
     PARAM_GRID = list(product(
             [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.00002, 0.03, 0.003, 0.0003, 0.00003, 0.004, 0.0004, 0.00004],  # learning_rate
@@ -84,12 +87,13 @@ def train_dnn(opts):
   else:
     model, train_l, val_l, val_ac = train_epoch(train_loader, val_loader, opts)
     plt.figure(1)
-    line1, = plt.plot(np.arange(opts.num_epochs), train_l)
-    line2, = plt.plot(np.arange(opts.num_epochs), val_l)
+    line1, *_ = plt.plot(np.arange(opts.n_epochs), np.array(train_l))
+    line2, *_ = plt.plot(np.arange(opts.n_epochs), np.array(val_l))
     plt.legend((line1, line2), ("Training Loss", "Validation Loss"))
-    plt.figure(2)
-    line2, = plt.plot(np.arange(opts.num_epochs), val_ac)
     plt.savefig(opts.save_dir + "/train_loss.png")
+    plt.figure(2)
+    line2, *_ = plt.plot(np.arange(opts.n_epochs), val_ac)
+    plt.savefig(opts.save_dir + "/val_acc.png")
 
 
 
@@ -107,7 +111,7 @@ def train_epoch(train_loader, val_loader, opts):
   max_acc = 0.
   val_acc = 0
   val_loss = 0
-  for epoch in range(opts.num_epochs):
+  for epoch in range(opts.n_epochs):
     val_acc = 0.
     for x, y in tqdm(train_loader):
       model.train()
@@ -122,9 +126,9 @@ def train_epoch(train_loader, val_loader, opts):
       val_acc, val_loss = eval(model, val_loader, l, opts)
     if val_acc > max_acc and not opts.tune:
       max_acc = val_acc
-      torch.save(model.state_dict(), opts.save_dir + "/best_model.pt")
-    train_l.append(train_loss)
-    val_l.append(val_loss)
+      torch.save(model.state_dict(), opts.save_dir + "/best_model.pt".format(epoch))
+    train_l.append(train_loss.detach().item())
+    val_l.append(np.array(val_loss).mean().item())
     val_ac.append(val_acc)
     print("\nEpoch {}: Train Loss : {} Val Accuracy : {}".format(epoch, train_loss, val_acc))
     lr_scheduler.step()

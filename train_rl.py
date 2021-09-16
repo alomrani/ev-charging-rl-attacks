@@ -10,11 +10,11 @@ from options import get_options
 from soc_dataset import SoCDataset
 from reinforce_baseline import ExponentialBaseline
 
-from DNNAgent import mal_rl_agent
-from spoof_agent1 import mal_agent1
-from spoof_agent2 import mal_agent2
-from spoof_agent3 import mal_agent3
-from spoof_agent4 import mal_agent4
+from attack_policy.DNNAgent import mal_rl_agent
+from attack_policy.spoof_agent1 import mal_agent1
+from attack_policy.spoof_agent2 import mal_agent2
+from attack_policy.spoof_agent3 import mal_agent3
+from attack_policy.spoof_agent4 import mal_agent4
 from charging_env import charging_ev
 import os
 from itertools import product
@@ -144,41 +144,48 @@ def train(opts):
     plt.title("Detection Accuracy Against RL Attacks")
     plt.xlabel("Gamma")
     plt.ylabel("Accuracy")
-    plt.savefig("attacks_detect.png")
-  elif opts.create_mal_dataset:
-    agent = mal_agent(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
-    # if opts.load_path is not None:
-    #   load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
-    #   agent.load_state_dict(load_data)
+    plt.savefig(opts.save_dir + "/attacks_detect.png")
+  # elif opts.create_mal_dataset:
+  #   agent = mal_agent(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
+  #   agent1 = mal_agent1(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
+  #   agent2 = mal_agent2(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
+  #   # if opts.load_path is not None:
+  #   #   load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
+  #   #   agent.load_state_dict(load_data)
     
-    benign_dataset = torch.cat((train_dataset, val_dataset, test_dataset), dim=0)
-    train_dataset_b = benign_dataset[:-4000, :]
-    val_dataset_b = benign_dataset[-4000:-2000, :]
-    test_dataset_b = benign_dataset[-2000:, :]
+  #   benign_dataset = torch.cat((train_dataset, val_dataset, test_dataset), dim=0)
+  #   train_dataset_b = benign_dataset[:-4000, :]
+  #   val_dataset_b = benign_dataset[-4000:-2000, :]
+  #   test_dataset_b = benign_dataset[-2000:, :]
 
-    loader_benign = DataLoader(SoCDataset(benign_dataset[:, :-1], benign_dataset[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
-    loader_val = DataLoader(SoCDataset(val_dataset_b[:, :-1], val_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
-    loader_test = DataLoader(SoCDataset(test_dataset_b[:, :-1], test_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
-    mal_dataset = generate_mal_samples(agent, loader_benign, opts)
-    idx = torch.randperm(mal_dataset.shape[0])
-    mal_dataset = mal_dataset[idx].view(mal_dataset.size())
-    # mal_dataset_val = generate_mal_samples(agent, loader_val, opts)
-    # mal_dataset_test = generate_mal_samples(agent, loader_test, opts)
-    train_dataset_imb = torch.cat((train_dataset_b, mal_dataset[:-4000, :]), dim=0)
-    ada = ADASYN(random_state=42, sampling_strategy=1., n_neighbors=5)
-    x = train_dataset_imb[:, :-1]
-    y = train_dataset_imb[:, -1]
-    soc_data, label = ada.fit_resample(x, y)
+  #   loader_benign = DataLoader(SoCDataset(benign_dataset[:, :-1], benign_dataset[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
+  #   loader_val = DataLoader(SoCDataset(val_dataset_b[:, :-1], val_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
+  #   loader_test = DataLoader(SoCDataset(test_dataset_b[:, :-1], test_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
+  #   mal_dataset1 = generate_mal_samples(agent, loader_benign, opts)
+  #   _, mal_dataset2, *_ = eval(agent1, loader_benign, opts)
+  #   _, mal_dataset3, *_ = eval(agent2, loader_benign, opts)
+  #   mal_dataset2 = torch.cat((mal_dataset2, torch.ones(mal_dataset2.size(0), 1)), dim=1)
+  #   mal_dataset3 = torch.cat((mal_dataset3, torch.ones(mal_dataset3.size(0), 1)), dim=1)
+  #   mal_dataset = torch.cat((mal_dataset1, mal_dataset2, mal_dataset3), dim=0)
+  #   idx = torch.randperm(mal_dataset.shape[0])
+  #   mal_dataset = mal_dataset[idx].view(mal_dataset.size())
+  #   # mal_dataset_val = generate_mal_samples(agent, loader_val, opts)
+  #   # mal_dataset_test = generate_mal_samples(agent, loader_test, opts)
+  #   train_dataset_imb = torch.cat((train_dataset_b, mal_dataset[:-4000, :]), dim=0)
+  #   ada = ADASYN(random_state=42, n_neighbors=5)
+  #   x = train_dataset_imb[:, :-1]
+  #   y = train_dataset_imb[:, -1]
+  #   soc_data, label = ada.fit_resample(x, y)
 
-    train_dataset_balanced = torch.cat((torch.tensor(soc_data), torch.tensor(label)[:, None]), dim=1)
-    print(train_dataset_balanced.shape)
-    idx = torch.randperm(train_dataset_balanced.shape[0])
-    train_dataset_balanced = train_dataset_balanced[idx].view(train_dataset_balanced.size())
-    validation_rl_whole = torch.cat((val_dataset_b, mal_dataset[-4000:-2000, :]), dim=0)
-    test_rl_whole = torch.cat((test_dataset_b, mal_dataset[-2000:, :]), dim=0)
-    torch.save(train_dataset_balanced, "detection_train.pt")
-    torch.save(validation_rl_whole, "detection_val.pt")
-    torch.save(test_rl_whole, "detection_test.pt")
+  #   train_dataset_balanced = torch.cat((torch.tensor(soc_data), torch.tensor(label)[:, None]), dim=1)
+  #   print(train_dataset_balanced.shape)
+  #   idx = torch.randperm(train_dataset_balanced.shape[0])
+  #   train_dataset_balanced = train_dataset_balanced[idx].view(train_dataset_balanced.size())
+  #   validation_rl_whole = torch.cat((val_dataset_b, mal_dataset[-4000:-2000, :]), dim=0)
+  #   test_rl_whole = torch.cat((test_dataset_b, mal_dataset[-2000:, :]), dim=0)
+  #   torch.save(train_dataset_balanced, "detection_train_syn.pt")
+  #   torch.save(validation_rl_whole, "detection_val_syn.pt")
+  #   torch.save(test_rl_whole, "detection_test_syn.pt")
 
   else:
     train_epoch(mal_agent, train_dataset, val_dataset, opts)
@@ -197,7 +204,11 @@ def generate_mal_samples(agent, loader, opts):
   mal_dataset = torch.cat((mal_dataset, torch.ones(mal_dataset.size(0), 1)), dim=1)
   return mal_dataset
 
+
 def eval_detect(agent, val_dataset, opts):
+  """
+  Evaluate detections accuracy of DNN againsts RL attacks by agent.
+  """
   val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
   r, purturbed, *_ = eval(agent, val_loader, opts)
   model = DetectionModelDNN(768, opts.num_timesteps, opts.p).to(opts.device)
@@ -212,6 +223,9 @@ def eval_detect(agent, val_dataset, opts):
 
 
 def run_env(agent, batch, opts):
+  """
+  Deploys the agent in the charging simulation and returns final reward.
+  """
   env = charging_ev(opts)
   batch_size = batch.size(0)
   log = torch.zeros(batch_size, 1, device=opts.device)
@@ -244,7 +258,7 @@ def train_batch(agent, train_loader, optimizer, baseline, loss_log, average_rewa
   for i, (x, y) in enumerate(tqdm(train_loader)):
     x = x.to(torch.device(opts.device))
     log = torch.zeros(opts.batch_size, 1, device=opts.device)
-    r, log, total_purturbs, _ = run_env(agent, x, opts)
+    r, log, total_purturbs, *_ = run_env(agent, x, opts)
     r = r + total_purturbs.squeeze(1) * opts.gamma * opts.battery_capacity
     rewards.append(r.mean().item())
     optimizer.zero_grad()
@@ -262,7 +276,7 @@ def train_epoch(mal_agent, train_dataset, val_dataset, opts):
   train_loader = DataLoader(SoCDataset(train_dataset[:, :-1], train_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True, num_workers=1)
   val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True, num_workers=1)
   baseline = ExponentialBaseline(opts.exp_beta)
-  agent = mal_agent(opts.hidden_size, opts.num_cars).to(torch.device(opts.device))
+  agent = mal_agent(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
   optimizer = Adam(agent.parameters(), lr=opts.lr_model)
   lr_scheduler = torch.optim.lr_scheduler.LambdaLR(
     optimizer, lambda epoch: opts.lr_decay ** epoch
@@ -270,7 +284,7 @@ def train_epoch(mal_agent, train_dataset, val_dataset, opts):
   average_reward = []
   loss_log = []
   agent.train()
-  for epoch in range(opts.num_epochs):
+  for epoch in range(opts.n_epochs):
     r = train_batch(agent, train_loader, optimizer, baseline, loss_log, average_reward, opts)
 
     lr_scheduler.step()
