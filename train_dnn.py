@@ -19,7 +19,7 @@ from DetectionModelDNN import DetectionModelDNN
 import os
 from itertools import product
 import json
-import seaborn
+import seaborn as sns
 
 def train_dnn(opts):
   torch.random.manual_seed(opts.seed)
@@ -86,14 +86,21 @@ def train_dnn(opts):
         f.write(f'{",".join(map(str, params + (val_acc,)))}\n')
   else:
     model, train_l, val_l, val_ac = train_epoch(train_loader, val_loader, opts)
+    sns.set_style("darkgrid")
     plt.figure(1)
     line1, *_ = plt.plot(np.arange(opts.n_epochs), np.array(train_l))
     line2, *_ = plt.plot(np.arange(opts.n_epochs), np.array(val_l))
+    plt.title("Loss During Training per Batch")
+    plt.xlabel("Batch Step")
+    plt.ylabel("Loss")
     plt.legend((line1, line2), ("Training Loss", "Validation Loss"))
-    plt.savefig(opts.save_dir + "/train_loss.png")
+    plt.savefig(opts.save_dir + "/train_loss.png", dpi=1200)
     plt.figure(2)
     line2, *_ = plt.plot(np.arange(opts.n_epochs), val_ac)
-    plt.savefig(opts.save_dir + "/val_acc.png")
+    plt.title("Accuracy During Training per Batch")
+    plt.xlabel("Batch Step")
+    plt.ylabel("Accuracy")
+    plt.savefig(opts.save_dir + "/val_acc.png", dpi=1200)
 
 
 
