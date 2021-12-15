@@ -90,17 +90,20 @@ def train_dnn(opts):
     plt.figure(1)
     line1, *_ = plt.plot(np.arange(opts.n_epochs), np.array(train_l))
     line2, *_ = plt.plot(np.arange(opts.n_epochs), np.array(val_l))
-    plt.title("Loss During Training per Batch")
+    plt.title("Loss During Training")
     plt.xlabel("Batch Step")
     plt.ylabel("Loss")
     plt.legend((line1, line2), ("Training Loss", "Validation Loss"))
     plt.savefig(opts.save_dir + "/train_loss.png", dpi=1200)
     plt.figure(2)
     line2, *_ = plt.plot(np.arange(opts.n_epochs), val_ac)
-    plt.title("Accuracy During Training per Batch")
+    plt.title("Accuracy During Training")
     plt.xlabel("Batch Step")
     plt.ylabel("Accuracy")
     plt.savefig(opts.save_dir + "/val_acc.png", dpi=1200)
+    np.save(opts.save_dir + "/val_acc.npy", np.array(val_ac))
+    np.save(opts.save_dir + "/val_loss.npy", np.array(val_l))
+    np.save(opts.save_dir + "/train_loss.npy", np.array(train_l))
 
 
 
@@ -135,7 +138,7 @@ def train_epoch(train_loader, val_loader, opts):
       max_acc = val_acc
       torch.save(model.state_dict(), opts.save_dir + "/best_model.pt".format(epoch))
     train_l.append(train_loss.detach().item())
-    val_l.append(np.array(val_loss).mean().item())
+    val_l.append(torch.tensor(val_loss).mean().item())
     val_ac.append(val_acc)
     print("\nEpoch {}: Train Loss : {} Val Accuracy : {}".format(epoch, train_loss, val_acc))
     lr_scheduler.step()

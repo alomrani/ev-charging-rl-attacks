@@ -21,7 +21,7 @@ def get_options(args=None):
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=100,
+        default=1000,
         help="Number of instances per batch during training",
     )
 
