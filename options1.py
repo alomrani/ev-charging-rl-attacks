@@ -40,19 +40,19 @@ def get_options(args=None):
     parser.add_argument(
         "--val_dataset",
         type=str,
-        default="dnn_datasets/detection_val_syn.pt",
+        default="dnn_datasets/detection_val_syn_comp.pt",
         help="Dataset file to use for validation",
     )
     parser.add_argument(
         "--test_dataset",
         type=str,
-        default="dnn_datasets/detection_test_syn.pt",
+        default="dnn_datasets/detection_test_syn_comp.pt",
         help="Dataset file to use for testing",
     )
     parser.add_argument(
         "--train_dataset",
         type=str,
-        default="dnn_datasets/detection_train_syn.pt",
+        default="dnn_datasets/detection_train_syn_comp.pt",
         help="Dataset file to use for training",
     )
 
@@ -122,6 +122,11 @@ def get_options(args=None):
         "--regularize",
         action="store_true",
         help="Set this value to add regularization to the reward function",
+    )
+    parser.add_argument(
+        "--train_plots",
+        action="store_true",
+        help="Generate training plots",
     )
     parser.add_argument(
         "--eval_only",

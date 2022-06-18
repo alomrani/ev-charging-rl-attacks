@@ -115,7 +115,7 @@ def get_options(args=None):
     parser.add_argument(
         "--gamma",
         type=float,
-        default=0.01,
+        default=0.6,
         help="hyperparameter for regularization in reward function",
     )
     parser.add_argument(

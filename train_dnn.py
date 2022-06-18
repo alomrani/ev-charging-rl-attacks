@@ -20,6 +20,7 @@ import os
 from itertools import product
 import json
 import seaborn as sns
+import matplotlib.patches as mpatches
 
 def train_dnn(opts):
   torch.random.manual_seed(opts.seed)
@@ -34,11 +35,9 @@ def train_dnn(opts):
 #  train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
   val_dataset = torch.load(opts.val_dataset)
   test_dataset = torch.load(opts.test_dataset)
+
 #  val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
 
-
-  # val_dataset = val_dataset.reshape(val_dataset.size(0) * val_dataset.size(1), -1)
-  test_dataset = torch.load(opts.test_dataset)
 
   train_loader = DataLoader(SoCDataset(train_dataset[:, :-1], train_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
   val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
@@ -54,6 +53,42 @@ def train_dnn(opts):
     loss = nn.CrossEntropyLoss()
     val_acc, val_loss = eval(model, test_loader, loss, opts)
     print(val_acc)
+  elif opts.train_plots:
+    colors = sns.color_palette()
+    models = ['Model 1', 'Model 2', 'Model 3']
+    plt.figure(1)
+    sns.set(style="darkgrid")
+    plots = []
+    legend_patches = []
+    for i, model in enumerate(models):
+      model_train_loss = np.load(f"train_loss_{model[-1]}.npy")
+    # plt.title(f"Num Cars {opts.num_cars} arrival rate : {opts.lamb}")
+      line = sns.tsplot(data=np.array(model_train_loss), color=colors[i])
+      patch = mpatches.Patch(color=colors[i], label=model)
+      legend_patches.append(patch)
+    plt.legend(handles=legend_patches, title="Model")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training Loss")
+
+    plt.savefig(opts.save_dir + "/training_loss.pdf", dpi=400)
+
+    plt.figure(2)
+
+    legend_patches = []
+    for i, model in enumerate(models):
+      model_train_loss = np.load(f"val_acc_{model[-1]}.npy")
+    # plt.title(f"Num Cars {opts.num_cars} arrival rate : {opts.lamb}")
+      line = sns.tsplot(data=np.array(model_train_loss), color=colors[i])
+      patch = mpatches.Patch(color=colors[i], label=model)
+      legend_patches.append(patch)
+    plt.legend(handles=legend_patches, title="Model")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Validation Accuracy")
+
+    plt.savefig(opts.save_dir + "/validation_accuracy.pdf", dpi=400)
+
   elif opts.tune:
     PARAM_GRID = list(product(
             [0.01, 0.001, 0.0001, 0.00001, 0.02, 0.002, 0.0002, 0.00002, 0.03, 0.003, 0.0003, 0.00003, 0.004, 0.0004, 0.00004],  # learning_rate
@@ -85,29 +120,50 @@ def train_dnn(opts):
       with open(SCOREFILE, "a") as f:
         f.write(f'{",".join(map(str, params + (val_acc,)))}\n')
   else:
-    model, train_l, val_l, val_ac = train_epoch(train_loader, val_loader, opts)
+    seeds = [200, 890, 786, 4872]
+    best_val_acc = 0
+    all_train_l, all_val_l, all_val_ac = [], [], []
+    for seed in seeds:
+      curr_model, curr_train_l, curr_val_l, curr_val_ac, max_val_acc = train_epoch(train_loader, val_loader, opts, seed=seed)
+
+      all_train_l.append(curr_train_l)
+      all_val_l.append(curr_val_l)
+      all_val_ac.append(curr_val_ac)
+      if max_val_acc > best_val_acc:
+        best_model = curr_model
+        best_val_acc = max_val_acc
+
+        best_train_l, best_val_l, best_val_ac = curr_train_l, curr_val_l, curr_val_ac
+        torch.save(best_model.state_dict(), opts.save_dir + "/best_model_overall.pt")
+        
+        print("Cur Best Val Acc: ", best_val_acc)
+
     sns.set_style("darkgrid")
     plt.figure(1)
-    line1, *_ = plt.plot(np.arange(opts.n_epochs), np.array(train_l))
-    line2, *_ = plt.plot(np.arange(opts.n_epochs), np.array(val_l))
+    line1, *_ = plt.plot(np.arange(opts.n_epochs), np.array(best_train_l))
+    line2, *_ = plt.plot(np.arange(opts.n_epochs), np.array(best_val_l))
     plt.title("Loss During Training")
     plt.xlabel("Batch Step")
     plt.ylabel("Loss")
     plt.legend((line1, line2), ("Training Loss", "Validation Loss"))
-    plt.savefig(opts.save_dir + "/train_loss.png", dpi=1200)
+    plt.savefig(opts.save_dir + "/train_loss.pdf", dpi=1200)
     plt.figure(2)
-    line2, *_ = plt.plot(np.arange(opts.n_epochs), val_ac)
+    line2, *_ = plt.plot(np.arange(opts.n_epochs), best_val_ac)
     plt.title("Accuracy During Training")
     plt.xlabel("Batch Step")
     plt.ylabel("Accuracy")
-    plt.savefig(opts.save_dir + "/val_acc.png", dpi=1200)
-    np.save(opts.save_dir + "/val_acc.npy", np.array(val_ac))
-    np.save(opts.save_dir + "/val_loss.npy", np.array(val_l))
-    np.save(opts.save_dir + "/train_loss.npy", np.array(train_l))
+    plt.savefig(opts.save_dir + "/val_acc.pdf", dpi=1200)
+    print(np.array(all_val_ac).shape)
+    np.save(opts.save_dir + "/val_acc.npy", np.array(all_val_ac))
+    np.save(opts.save_dir + "/val_loss.npy", np.array(all_val_l))
+    np.save(opts.save_dir + "/train_loss.npy", np.array(all_train_l))
 
 
 
-def train_epoch(train_loader, val_loader, opts):
+def train_epoch(train_loader, val_loader, opts, seed=None):
+  if seed is not None:
+    torch.random.manual_seed(seed)
+    np.random.seed(seed)
   model = DetectionModelDNN(opts.hidden_size, opts.num_timesteps, opts.p).to(opts.device)
 
   optimizer = Adam(model.parameters(), lr=opts.lr_model)
@@ -142,7 +198,7 @@ def train_epoch(train_loader, val_loader, opts):
     val_ac.append(val_acc)
     print("\nEpoch {}: Train Loss : {} Val Accuracy : {}".format(epoch, train_loss, val_acc))
     lr_scheduler.step()
-  return model, train_l, val_l, val_ac
+  return model, train_l, val_l, val_ac, max_acc
 
 
 def eval(model, val_loader, loss, opts):
