@@ -15,13 +15,16 @@ from attack_policy.spoof_agent1 import mal_agent1
 from attack_policy.spoof_agent2 import mal_agent2
 from attack_policy.spoof_agent3 import mal_agent3
 from attack_policy.spoof_agent4 import mal_agent4
+from attack_policy.benign_agent import benign_agent
 from charging_env import charging_ev
 import os
 from itertools import product
 import json
 import seaborn as sns
+import pandas as pd
 from imblearn.over_sampling import ADASYN
 from DetectionModelDNN import DetectionModelDNN
+import matplotlib.patches as mpatches
 
 
 def train(opts):
@@ -33,6 +36,33 @@ def train(opts):
     # Save arguments so exact configuration can always be found
         with open(os.path.join(opts.save_dir, "args.json"), "w") as f:
           json.dump(vars(opts), f, indent=True)
+  
+
+
+  # soc_dataset = torch.load("dnn_datasets/dataset.pt")
+  # print(soc_dataset.shape)
+  # cars = ['Car 50', 'Car 100']
+  # colors = sns.color_palette()
+  # sns.set(style="darkgrid", font_scale=1)
+  # plots = []
+  # legend_patches = []
+  # for i, car in enumerate(cars):
+
+  #   soc = soc_dataset[int(car.split(" ")[-1]), :, :-1]
+  # # plt.title(f"Num Cars {opts.num_cars} arrival rate : {opts.lamb}")
+  #   line = sns.tsplot(data=np.array(soc), color=colors[i])
+  #   patch = mpatches.Patch(color=colors[i], label=car)
+  #   legend_patches.append(patch)
+  # plt.legend(handles=legend_patches, title="Gamma")
+  # plt.xlabel("Time")
+  # plt.ylabel("SoC")
+  # plt.title(f"Soc Distribution Over 23 Days")
+
+  # plt.savefig(opts.save_dir + f"/soc_dist.pdf", dpi=400)
+
+  # return
+
+
   train_dataset = torch.load(opts.train_dataset)
 #  train_dataset = train_dataset.reshape(train_dataset.size(0) * train_dataset.size(1), -1)
   val_dataset = torch.load(opts.val_dataset)
@@ -47,28 +77,37 @@ def train(opts):
         "attack2": mal_agent2,
         "attack3": mal_agent3,
         "attack4": mal_agent4,
+        "no-attack": benign_agent
   }.get(opts.attack_model, None)
   assert mal_agent is not None, "Unknown model: {}".format(mal_agent)
   # env = charging_ev(num_cars, num_timesteps, total_power, epsilon, battery_capacity, opts.device, batch_size)
   if opts.train_seed:
-    seeds = [1234, 4321, 1098, 7890]
-    agents = []
-    rewards = []
-    for i in range(len(seeds)):
-      torch.random.manual_seed(seeds[i])
-      agent, avg_reward = train_epoch(mal_agent, train_dataset, train_dataset, opts)
-      agents.append(agent)
-      rewards.append(avg_reward)
-    
-    rewards = np.array(rewards)
-    plt.figure(3)
-    # plt.title(f"Num Cars {opts.num_cars} arrival rate : {opts.lamb}")
-    # plt.xlabel("Batch")
-    # plt.ylabel("Average Episode Reward")
+    # seeds = [1234, 4321, 1098, 7890]
+    # agents = []
+    # rewards = []
+    # for i in range(len(seeds)):
+    #   torch.random.manual_seed(seeds[i])
+    #   agent, avg_reward = train_epoch(mal_agent, train_dataset, train_dataset, opts)
+    #   agents.append(agent)
+    #   rewards.append(avg_reward)
+    colors = sns.color_palette()
+    gammas = [0.3, 0.4, 0.5, 0.6]
     sns.set(style="darkgrid", font_scale=1)
-    sns.tsplot(data=rewards)
-    plt.savefig(opts.save_dir + "/avg_rewards_seed.png", dpi=1200)
-    torch.save(torch.tensor(rewards), f"rewards_per_seed_{opts.gamma}.pt")
+    plots = []
+    legend_patches = []
+    for i, gamma in enumerate(gammas):
+
+      rewards = torch.load(f"rewards_per_seed_{gamma}.pt")
+    # plt.title(f"Num Cars {opts.num_cars} arrival rate : {opts.lamb}")
+      line = sns.tsplot(data=np.array(rewards), color=colors[i])
+      patch = mpatches.Patch(color=colors[i], label=gamma)
+      legend_patches.append(patch)
+    plt.legend(handles=legend_patches, title="Gamma")
+    plt.xlabel("Batch")
+    plt.ylabel("Average Reward")
+    plt.title("Average Episode Reward")
+
+    plt.savefig(opts.save_dir + "/avg_rewards_seed.pdf", dpi=400)
 
   elif opts.tune:
     PARAM_GRID = list(product(
@@ -109,7 +148,8 @@ def train(opts):
     if opts.load_path is not None:
       load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
       agent.load_state_dict(load_data)
-    r, purtubed, power_mal, power_ben = eval(agent, test_loader, opts)
+    r, purtubed, avg_power_mal, avg_power_ben, std_power_mal, std_power_ben = eval(agent, test_loader, opts)
+    sns.set(style="darkgrid")
     plt.figure(4)
     ax1, = plt.plot(np.arange(opts.num_timesteps), np.array(purtubed[0, :]))
     ax2, = plt.plot(np.arange(opts.num_timesteps), np.array(purtubed[-2, :]))
@@ -122,34 +162,41 @@ def train(opts):
       plt.title(f"Benign vs Malicious reported SoC Sequence gamma={opts.gamma}")
     plt.legend([ax1, ax2], ["benign", "malicious"])
 
-    plt.savefig(opts.save_dir + f"/spoof_vs_normal_{opts.gamma}.png", dpi=1200)
+    plt.savefig(opts.save_dir + f"/spoof_vs_normal_{opts.gamma}.pdf", dpi=400)
     print(f"Mean reward: {r}")
-    print(f"Mean Power for Malicious EV: {power_mal}")
-    print(f"Mean Power for benign EV: {power_ben}")
+    print(f"Mean Power for Malicious EV: {avg_power_mal} +- {std_power_mal}")
+    print(f"Mean Power for benign EV: {avg_power_ben} +- {std_power_ben}")
   elif opts.eval_detect:
     agent = mal_agent(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
     if opts.load_path is not None:
-      load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
+      load_data = torch.load(opts.load_path, map_location=torch.device(opts.device))
       agent.load_state_dict(load_data)
-    eval_detect(agent, test_dataset, opts)
+    no_attack = False
+    if opts.attack_model == "no-attack":
+        no_attack = True
+    eval_detect(agent, test_dataset, opts, no_attack)
   elif opts.eval_detect_range:
-    accuracies = []
+    accuracies = {'gamma': ["0.3", "0.4", "0.5", "0.6"], 'Avg RL Attack Detection Accuracy': []}
     for i in range(len(opts.load_paths)):
       data = opts.load_paths[i]
       agent = mal_agent(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
       load_data = torch.load(data, map_location=torch.device(torch.device(opts.device)))
       agent.load_state_dict(load_data)
-      accuracies.append(eval_detect(agent, test_dataset, opts))
+      accuracies['Avg RL Attack Detection Accuracy'].append(eval_detect(agent, test_dataset, opts))
+    sns.set(style="darkgrid")
     plt.figure(5)
-    plt.plot(np.array(["0.3", "0.4", "0.5", "0.6"]), np.array(accuracies))
+    # plt.plot(np.array(["0.3", "0.4", "0.5", "0.6"]), np.array(accuracies))
+    sns.barplot(data=pd.DataFrame(accuracies), x='gamma', y='Avg RL Attack Detection Accuracy')
     plt.title("Detection Accuracy Against RL Attacks")
-    plt.xlabel("Gamma")
-    plt.ylabel("Accuracy")
-    plt.savefig(opts.save_dir + "/attacks_detect.png", dpi=1200)
+    # plt.xlabel("Gamma")
+    # plt.ylabel("Accuracy")
+    plt.savefig(opts.save_dir + "/attacks_detect.pdf", dpi=300)
   elif opts.create_mal_dataset:
     agent = mal_agent(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
     agent1 = mal_agent1(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
     agent2 = mal_agent2(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
+    agent3 = mal_agent3(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
+    agent4 = mal_agent4(opts.hidden_size, opts.num_cars, opts).to(torch.device(opts.device))
     # if opts.load_path is not None:
     #   load_data = torch.load(opts.load_path, map_location=torch.device(torch.device(opts.device)))
     #   agent.load_state_dict(load_data)
@@ -162,12 +209,16 @@ def train(opts):
     loader_benign = DataLoader(SoCDataset(benign_dataset[:, :-1], benign_dataset[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
     loader_val = DataLoader(SoCDataset(val_dataset_b[:, :-1], val_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
     loader_test = DataLoader(SoCDataset(test_dataset_b[:, :-1], test_dataset_b[:, -1].unsqueeze(1)), batch_size=opts.batch_size, shuffle=True)
-    mal_dataset1 = generate_mal_samples(agent, loader_benign, opts)
+    # mal_dataset1 = generate_mal_samples(agent, loader_benign, opts)
     _, mal_dataset2, *_ = eval(agent1, loader_benign, opts)
     _, mal_dataset3, *_ = eval(agent2, loader_benign, opts)
+    _, mal_dataset4, *_ = eval(agent3, loader_benign, opts)
+    _, mal_dataset5, *_ = eval(agent4, loader_benign, opts)
     mal_dataset2 = torch.cat((mal_dataset2, torch.ones(mal_dataset2.size(0), 1)), dim=1)
     mal_dataset3 = torch.cat((mal_dataset3, torch.ones(mal_dataset3.size(0), 1)), dim=1)
-    mal_dataset = torch.cat((mal_dataset1, mal_dataset2, mal_dataset3), dim=0)
+    mal_dataset4 = torch.cat((mal_dataset4, torch.ones(mal_dataset4.size(0), 1)), dim=1)
+    mal_dataset5 = torch.cat((mal_dataset5, torch.ones(mal_dataset5.size(0), 1)), dim=1)
+    mal_dataset = torch.cat((mal_dataset2, mal_dataset3, mal_dataset4, mal_dataset5), dim=0)
     idx = torch.randperm(mal_dataset.shape[0])
     mal_dataset = mal_dataset[idx].view(mal_dataset.size())
     # mal_dataset_val = generate_mal_samples(agent, loader_val, opts)
@@ -184,9 +235,9 @@ def train(opts):
     train_dataset_balanced = train_dataset_balanced[idx].view(train_dataset_balanced.size())
     validation_rl_whole = torch.cat((val_dataset_b, mal_dataset[-4000:-2000, :]), dim=0)
     test_rl_whole = torch.cat((test_dataset_b, mal_dataset[-2000:, :]), dim=0)
-    torch.save(train_dataset_balanced, "detection_train_syn.pt")
-    torch.save(validation_rl_whole, "detection_val_syn.pt")
-    torch.save(test_rl_whole, "detection_test_syn.pt")
+    torch.save(train_dataset_balanced, "detection_train_syn_only.pt")
+    torch.save(validation_rl_whole, "detection_val_syn_only.pt")
+    torch.save(test_rl_whole, "detection_test_syn_only.pt")
 
   else:
     train_epoch(mal_agent, train_dataset, val_dataset, opts)
@@ -206,22 +257,31 @@ def generate_mal_samples(agent, loader, opts):
   return mal_dataset
 
 
-def eval_detect(agent, val_dataset, opts):
+def eval_detect(agent, val_dataset, opts, no_attack=False):
   """
   Evaluate detections accuracy of DNN againsts RL attacks by agent.
   """
-  np.random.seed(50000)
-  val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
-  r, purturbed, *_ = eval(agent, val_loader, opts)
-  model = DetectionModelDNN(768, opts.num_timesteps, opts.p).to(opts.device)
+  all_acc = []
+  seeds = [111, 2035, 5020, 4562]
+
+  model = DetectionModelDNN(784, opts.num_timesteps, opts.p).to(opts.device)
   model.eval()
   load_data = torch.load(opts.load_path2, map_location=torch.device(torch.device(opts.device)))
   model.load_state_dict(load_data)
-  out = model(purturbed[1:, :].float()).detach()
-  acc = (out.argmax(1) == 1).float().sum() / (purturbed.size(0) - 1)
 
-  print(f"Detection Accuracy against RL attacks: {acc}")
-  return acc
+  for seed in seeds:
+    np.random.seed(seed)
+    torch.random.manual_seed(seed)
+    val_loader = DataLoader(SoCDataset(val_dataset[:, :-1], val_dataset[:, -1][:, None]), batch_size=opts.batch_size, shuffle=True)
+    r, purturbed, *_ = eval(agent, val_loader, opts)
+    out = model(purturbed[1:, :].float()).detach()
+    target = 1 if not no_attack else 0
+    curr_acc = (out.argmax(1) == target).float().sum() / (purturbed.size(0) - 1)
+
+    all_acc.append(curr_acc)
+
+  print(f"Avg Detection Accuracy against RL attacks: {np.mean(all_acc)} +- {np.std(all_acc)}")
+  return np.mean(all_acc)
 
 
 def run_env(agent, batch, opts):
@@ -298,12 +358,12 @@ def train_epoch(mal_agent, train_dataset, val_dataset, opts):
     line1, = plt.plot(np.arange(len(average_reward)), average_reward)
     plt.xlabel("Batch")
     plt.ylabel("Average Reward")
-    plt.savefig(opts.save_dir + "/avg_reward.png", dpi=1200)
+    plt.savefig(opts.save_dir + "/avg_reward.pdf", dpi=1200)
     plt.figure(2)
     line2, = plt.plot(np.arange(len(loss_log)), loss_log)
     plt.xlabel("Batch")
     plt.ylabel("Policy Loss")
-    plt.savefig(opts.save_dir + "/train_loss.png", dpi=1200)
+    plt.savefig(opts.save_dir + "/train_loss.pdf", dpi=1200)
     torch.save(agent.state_dict(), opts.save_dir + "/trained_agent.pt")
   return agent, average_reward
 
@@ -328,7 +388,9 @@ def eval(agent, dataloader, opts):
     np.array(average_reward).mean(), 
     torch.cat((x[-2, :].unsqueeze(0), concat.reshape(concat.size(0)*concat.size(1), -1)), dim=0), 
     np.array(average_power_mal).mean(),
-    np.array(average_power_ben).mean()
+    np.array(average_power_ben).mean(),
+    np.array(average_power_mal).std(),
+    np.array(average_power_ben).std(),
   )
 
 
