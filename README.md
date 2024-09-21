@@ -1,4 +1,4 @@
-# 1. Program Manual
+# Detecting state of charge false reporting attacks via reinforcement learning approach (2023 IEEE Transactions on Intelligent Transportation Systems)
 
 
 ## Training
@@ -74,7 +74,7 @@ To test detection accuracy on a synthetic attack:
 `DetectionModelDNN.py`: Defined the DNN architecture of the detection model.
 
 
-# 2. Datasel Manual
+# 2. Dataset
 
 The training/validation/testing datasets for the RL agent can be found in the `rl_datasets` directory.
 
