@@ -1,5 +1,7 @@
-# Detecting state of charge false reporting attacks via reinforcement learning approach (2023 IEEE Transactions on Intelligent Transportation Systems)
+# Detecting State of Charge False Reporting Attacks via Reinforcement Learning
 
+[Paper link](https://ieeexplore.ieee.org/abstract/document/10149139/)
+(2023 IEEE Transactions on Intelligent Transportation Systems)
 
 ## Training
 
